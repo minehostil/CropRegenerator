@@ -1,0 +1,118 @@
+# ╔══════════════════════════════════════════╗
+# ║         CropRegenerator Config           ║
+# ╚══════════════════════════════════════════╝
+
+# Material del bloque regenerador (debe ser un bloque válido de Minecraft)
+block-material: EMERALD_BLOCK
+
+# ¿Guardar bloques entre reinicios del servidor?
+persist-data: true
+
+# ──────────────────────────────────────────
+# NIVELES DE MEJORA
+# Cada nivel define: radio de efecto, intervalo de regeneración (en segundos)
+# y límite de bloques por isla (requiere SuperiorSkyblock2)
+# ──────────────────────────────────────────
+upgrades:
+  1:
+    radius: 5
+    regen-interval: 60       # segundos
+    max-blocks-per-island: 1
+    display-name: "<green>Regenerador de Cultivos <gray>[Nivel 1]"
+  2:
+    radius: 8
+    regen-interval: 45
+    max-blocks-per-island: 2
+    display-name: "<green>Regenerador de Cultivos <yellow>[Nivel 2]"
+  3:
+    radius: 12
+    regen-interval: 30
+    max-blocks-per-island: 3
+    display-name: "<green>Regenerador de Cultivos <gold>[Nivel 3]"
+  4:
+    radius: 16
+    regen-interval: 20
+    max-blocks-per-island: 4
+    display-name: "<green>Regenerador de Cultivos <red>[Nivel 4]"
+  5:
+    radius: 20
+    regen-interval: 10
+    max-blocks-per-island: 5
+    display-name: "<green>Regenerador de Cultivos <light_purple>[Nivel MAX]"
+
+# ──────────────────────────────────────────
+# HOLOGRAMA (Display Entity)
+# ──────────────────────────────────────────
+hologram:
+  # Offset Y sobre el bloque
+  offset-y: 1.5
+  # Cada cuántos segundos se actualiza el texto del holograma (mínimo 1)
+  update-interval: 1
+  # Escala del texto
+  scale: 1.0
+  # Líneas del holograma — placeholders disponibles:
+  # {level} {radius} {interval} {owner} {next_regen}
+  lines:
+    - "<gradient:#00ff00:#00cc00><bold>✦ Regenerador ✦</bold></gradient>"
+    - "<gray>Área: <green>{radius} bloques"
+    - "<gray>Recarga: <yellow>{interval}s"
+    - "<dark_gray>⏳ Próx: <white>{next_regen}s"
+
+# ──────────────────────────────────────────
+# MENSAJES
+# ──────────────────────────────────────────
+messages:
+  prefix: "<dark_green>[<green>CropRegen<dark_green>] "
+  placed: "<green>Bloque regenerador colocado correctamente."
+  removed: "<red>Bloque regenerador eliminado."
+  limit-reached: "<red>Has alcanzado el límite de bloques para tu isla (<white>{max}<red>)."
+  upgrade-success: "<green>Bloque mejorado al nivel <yellow>{level}<green>."
+  upgrade-max: "<yellow>Este bloque ya está en el nivel máximo."
+  not-your-island: "<red>Solo puedes colocar este bloque en tu isla."
+  no-permission: "<red>No tienes permisos para hacer esto."
+  regen-tick: "<green>✔ Cultivos regenerados en el área."
+  item-given: "<green>Se dio el bloque de nivel <yellow>{level} <green>a <white>{player}<green>."
+  no-player: "<red>Jugador no encontrado."
+  invalid-level: "<red>Nivel inválido. Usa un nivel entre 1 y {max}."
+
+# ──────────────────────────────────────────
+# INTERACCIÓN (clic derecho sobre el bloque)
+# ──────────────────────────────────────────
+interaction:
+  # ¿Activar la ejecución de comandos al hacer clic derecho?
+  enabled: true
+  # Cooldown en segundos entre usos (0 = sin cooldown)
+  cooldown: 3
+  # Comandos a ejecutar como el jugador. Usa {player} como placeholder.
+  # No incluyas la barra "/" al inicio.
+  commands:
+    - "is menu"
+  # Mensaje al ejecutar (déjalo vacío "" para no mostrar nada)
+  message: "<green>¡Comandos ejecutados!"
+  # Mensaje de cooldown — placeholder: {seconds}
+  cooldown-message: "<red>Espera <yellow>{seconds}s <red>antes de volver a usar esto."
+
+# ──────────────────────────────────────────
+# ÍTEM (lore del bloque regenerador)
+# Placeholders disponibles:
+#   {level}      → Nivel del bloque
+#   {radius}     → Radio de efecto
+#   {interval}   → Intervalo de regeneración en segundos
+#   {max_blocks} → Máximo de bloques por isla
+# Puedes agregar o quitar las líneas que quieras.
+# Usa "" para una línea vacía.
+# ──────────────────────────────────────────
+item:
+  lore:
+    - "<dark_gray>──────────────────"
+    - "<gray>Nivel: <yellow>{level}"
+    - "<gray>Radio: <green>{radius} bloques"
+    - "<gray>Intervalo: <yellow>{interval}s"
+    - "<gray>Máx/isla: <aqua>{max_blocks}"
+    - ""
+    - "<dark_gray>Coloca este bloque en tu isla"
+    - "<dark_gray>──────────────────"
+  # ¿Aplicar brillo de encantamiento al ítem?
+  enchanted: true
+  # ¿Ocultar los encantamientos del lore? (solo aplica si enchanted: true)
+  hide-enchantments: true
