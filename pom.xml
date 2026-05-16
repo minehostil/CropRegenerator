@@ -24,6 +24,11 @@
             <id>papermc</id>
             <url>https://repo.papermc.io/repository/maven-public/</url>
         </repository>
+        <!-- JitPack (GHolo) -->
+        <repository>
+            <id>jitpack</id>
+            <url>https://jitpack.io</url>
+        </repository>
         <!-- SuperiorSkyblock2 -->
         <repository>
             <id>bg-repo</id>
@@ -33,6 +38,11 @@
         <repository>
             <id>placeholderapi</id>
             <url>https://repo.helpch.at/releases</url>
+        </repository>
+        <!-- FancyHolograms -->
+        <repository>
+            <id>fancyinnovations-releases</id>
+            <url>https://repo.fancyinnovations.com/releases</url>
         </repository>
         <!-- EngineHub (WorldEdit / FAWE) -->
         <repository>
@@ -63,11 +73,27 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- GHolo API (optional) -->
+        <dependency>
+            <groupId>com.github.Gecolay.GHolo</groupId>
+            <artifactId>core</artifactId>
+            <version>2.3.2</version>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- SuperiorSkyblock2 API -->
         <dependency>
             <groupId>com.bgsoftware</groupId>
             <artifactId>SuperiorSkyblockAPI</artifactId>
             <version>2024.2</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- FancyHolograms API (optional) -->
+        <dependency>
+            <groupId>de.oliver</groupId>
+            <artifactId>FancyHolograms</artifactId>
+            <version>2.9.1</version>
             <scope>provided</scope>
         </dependency>
 
