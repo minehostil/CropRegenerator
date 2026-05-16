@@ -2,13 +2,6 @@
 # ║         CropRegenerator Config           ║
 # ╚══════════════════════════════════════════╝
 
-# ──────────────────────────────────────────
-# PROVEEDOR DE HOLOGRAMAS
-# NATIVE → usa TextDisplay nativo de Paper (sin dependencias extra)
-# GHOLO  → usa el plugin GHolo (debe estar instalado)
-# ──────────────────────────────────────────
-hologram-provider: NATIVE
-
 # Material del bloque regenerador (debe ser un bloque válido de Minecraft)
 block-material: EMERALD_BLOCK
 
@@ -46,34 +39,32 @@ upgrades:
     radius: 5
     regen-interval: 60       # segundos
     max-blocks-per-island: 1
-    display-name: "<green>Regenerador de Cultivos <gray>[Nivel 1]"
+    display-name: "&aRegenerador de Cultivos &7[Nivel 1]"
   2:
     radius: 8
     regen-interval: 45
     max-blocks-per-island: 2
-    display-name: "<green>Regenerador de Cultivos <yellow>[Nivel 2]"
+    display-name: "&aRegenerador de Cultivos &e[Nivel 2]"
   3:
     radius: 12
     regen-interval: 30
     max-blocks-per-island: 3
-    display-name: "<green>Regenerador de Cultivos <gold>[Nivel 3]"
+    display-name: "&aRegenerador de Cultivos &6[Nivel 3]"
   4:
     radius: 16
     regen-interval: 20
     max-blocks-per-island: 4
-    display-name: "<green>Regenerador de Cultivos <red>[Nivel 4]"
+    display-name: "&aRegenerador de Cultivos &c[Nivel 4]"
   5:
     radius: 20
     regen-interval: 10
     max-blocks-per-island: 5
-    display-name: "<green>Regenerador de Cultivos <light_purple>[Nivel MAX]"
+    display-name: "&aRegenerador de Cultivos &d[Nivel MAX]"
 
 # ──────────────────────────────────────────
 # HOLOGRAMA (Display Entity)
 # ──────────────────────────────────────────
 hologram:
-  # Proveedor de hologramas: NATIVE (TextDisplay, sin dependencias) o GHOLO (requiere GHolo instalado)
-  provider: NATIVE
   # Offset Y sobre el bloque
   offset-y: 1.5
   # Cada cuántos segundos se actualiza el texto del holograma (mínimo 1)
@@ -134,15 +125,17 @@ interaction:
 # Usa "" para una línea vacía.
 # ──────────────────────────────────────────
 item:
+  # Soporta & codes (&a, &l, etc.) y hex (&#RRGGBB)
+  # Usa &r al inicio de cada línea para evitar que aparezca en cursiva
   lore:
-    - "<dark_gray>──────────────────"
-    - "<gray>Nivel: <yellow>{level}"
-    - "<gray>Radio: <green>{radius} bloques"
-    - "<gray>Intervalo: <yellow>{interval}s"
-    - "<gray>Máx/isla: <aqua>{max_blocks}"
+    - "&r&8──────────────────"
+    - "&r&7Nivel: &e{level}"
+    - "&r&7Radio: &a{radius} bloques"
+    - "&r&7Intervalo: &e{interval}s"
+    - "&r&7Máx/isla: &b{max_blocks}"
     - ""
-    - "<dark_gray>Coloca este bloque en tu isla"
-    - "<dark_gray>──────────────────"
+    - "&r&8Coloca este bloque en tu isla"
+    - "&r&8──────────────────"
   # ¿Aplicar brillo de encantamiento al ítem?
   enchanted: true
   # ¿Ocultar los encantamientos del lore? (solo aplica si enchanted: true)
