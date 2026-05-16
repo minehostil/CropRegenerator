@@ -9,6 +9,8 @@ softdepend:
   - SuperiorSkyblock2
   - FastAsyncWorldEdit
   - PlaceholderAPI
+  - GHolo
+  - GHolo
 
 commands:
   cropblock:
