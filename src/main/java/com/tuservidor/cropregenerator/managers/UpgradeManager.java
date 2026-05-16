@@ -7,7 +7,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Lee y provee la configuraciĆ³n de cada nivel de mejora desde config.yml.
+ * Lee y provee la configuración de cada nivel de mejora desde config.yml.
  */
 public class UpgradeManager {
 
