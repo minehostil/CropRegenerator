@@ -3,7 +3,7 @@ package com.tuservidor.cropregenerator.util;
 import com.tuservidor.cropregenerator.CropRegeneratorPlugin;
 import com.tuservidor.cropregenerator.managers.UpgradeManager;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
@@ -19,14 +19,18 @@ import java.util.List;
 /**
  * Utilidades para crear e identificar el ítem del bloque regenerador.
  *
- * Opciones en config.yml → item:
- *   lore              → Líneas ilimitadas con placeholders
- *   enchanted         → true/false — aplica brillo de encantamiento
- *   hide-enchantments → true/false — oculta el texto de encantamientos
+ * Usa LegacyComponentSerializer para nombre y lore — soporta & codes y &#RRGGBB.
+ * El &r al inicio de cada línea del lore evita la cursiva que aplica Paper por defecto.
  */
 public class ItemUtil {
 
-    private static final MiniMessage MM = MiniMessage.miniMessage();
+    // LegacyComponentSerializer con soporte de & y hex &#RRGGBB
+    private static final LegacyComponentSerializer LEGACY =
+            LegacyComponentSerializer.builder()
+                    .character('&')
+                    .hexColors()
+                    .useUnusualXRepeatedCharacterHexFormat()
+                    .build();
 
     private static NamespacedKey REGEN_KEY;
     private static NamespacedKey LEVEL_KEY;
@@ -49,7 +53,7 @@ public class ItemUtil {
         ItemMeta meta  = item.getItemMeta();
 
         // ── Nombre ───────────────────────────────────────────
-        meta.displayName(MM.deserialize(upgLevel.displayName()));
+        meta.displayName(LEGACY.deserialize(upgLevel.displayName()));
 
         // ── Lore desde config ────────────────────────────────
         List<String> rawLines = plugin.getConfig().getStringList("item.lore");
@@ -62,7 +66,7 @@ public class ItemUtil {
                     .replace("{interval}",   String.valueOf(upgLevel.regenInterval()))
                     .replace("{max_blocks}", String.valueOf(upgLevel.maxBlocksPerIsland()));
 
-            lore.add(parsed.isEmpty() ? Component.empty() : MM.deserialize(parsed));
+            lore.add(parsed.isEmpty() ? Component.empty() : LEGACY.deserialize(parsed));
         }
 
         meta.lore(lore);
@@ -72,7 +76,6 @@ public class ItemUtil {
         boolean hideEnchantments = plugin.getConfig().getBoolean("item.hide-enchantments", true);
 
         if (enchanted) {
-            // Usar UNBREAKING via Registry para compatibilidad con 1.21.x
             Enchantment unbreaking = Registry.ENCHANTMENT.get(NamespacedKey.minecraft("unbreaking"));
             if (unbreaking != null) {
                 meta.addEnchant(unbreaking, 1, true);
