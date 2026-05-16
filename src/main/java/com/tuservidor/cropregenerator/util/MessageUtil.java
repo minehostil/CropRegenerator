@@ -5,14 +5,14 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.command.CommandSender;
 
 /**
- * EnvÃ­a mensajes configurables con soporte MiniMessage y reemplazos.
+ * Envía mensajes configurables con soporte MiniMessage y reemplazos.
  */
 public class MessageUtil {
 
     private static final MiniMessage MM = MiniMessage.miniMessage();
 
     /**
-     * EnvÃ­a el mensaje del config al sender.
+     * Envía el mensaje del config al sender.
      * @param replacements pares: "{placeholder}", "valor"
      */
     public static void send(CommandSender sender, String key, String... replacements) {
