@@ -41,10 +41,10 @@ public class GHoloProvider implements IHologramProvider {
 
         if (loc.getWorld() == null) return;
 
+        // SimpleLocation(World, double x, double y, double z)
         SimpleLocation simpleLoc = new SimpleLocation(
-                loc.getWorld().getName(),
-                loc.getX(), loc.getY(), loc.getZ(),
-                0f, 0f);
+                loc.getWorld(),
+                loc.getX(), loc.getY(), loc.getZ());
 
         GHolo holo = GHoloAPI.createHolo(holoId, simpleLoc);
         if (holo == null) {
