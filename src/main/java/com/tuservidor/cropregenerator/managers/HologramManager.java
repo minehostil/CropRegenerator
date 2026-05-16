@@ -1,205 +1,84 @@
 package com.tuservidor.cropregenerator.managers;
 
 import com.tuservidor.cropregenerator.CropRegeneratorPlugin;
+import com.tuservidor.cropregenerator.hologram.GHoloProvider;
+import com.tuservidor.cropregenerator.hologram.IHologramProvider;
+import com.tuservidor.cropregenerator.hologram.NativeHologramProvider;
 import com.tuservidor.cropregenerator.model.RegeneratorBlock;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.minimessage.MiniMessage;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-import org.bukkit.Location;
-import org.bukkit.NamespacedKey;
-import org.bukkit.World;
-import org.bukkit.entity.Display;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.TextDisplay;
-import org.bukkit.persistence.PersistentDataType;
-import org.bukkit.util.Transformation;
-import org.joml.AxisAngle4f;
-import org.joml.Vector3f;
-
-import java.util.*;
+import org.bukkit.Chunk;
 
 /**
- * Gestiona hologramas con TextDisplay entities.
+ * Fachada que delega al proveedor configurado en config.yml → hologram.provider.
  *
- * Optimizaciones:
- *  - Cache de Component por bloque: solo se llama MM.deserialize() cuando
- *    el texto realmente cambia (el countdown bajó un segundo).
- *  - La plantilla estática (nivel, radio, intervalo) se cachea por separado
- *    y solo se recalcula al mejorar el bloque (spawnOrUpdate).
- *  - setPersistent(false) + purgeAll() evitan duplicados por recarga de chunk.
+ * Valores válidos:
+ *   NATIVE  → TextDisplay nativo de Paper (default, sin dependencias)
+ *   GHOLO   → GHolo plugin (requiere GHolo instalado)
  */
 public class HologramManager {
 
-    private static final MiniMessage MM = MiniMessage.miniMessage();
-
-    private static final String PDC_KEY = "cropgen_hologram";
+    public enum Provider { NATIVE, GHOLO }
 
     private final CropRegeneratorPlugin plugin;
-    private final NamespacedKey holoKey;
-
-    // key → UUID de la TextDisplay activa
-    private final Map<String, UUID> hologramUUIDs = new HashMap<>();
-
-    // key → último valor de next_regen renderizado (evita re-parsear si no cambió)
-    private final Map<String, Long> lastRenderedRegen = new HashMap<>();
-
-    // key → Component cacheado listo para aplicar a la TextDisplay
-    private final Map<String, Component> componentCache = new HashMap<>();
+    private final IHologramProvider provider;
+    private final Provider providerType;
 
     public HologramManager(CropRegeneratorPlugin plugin) {
-        this.plugin  = plugin;
-        this.holoKey = new NamespacedKey(plugin, PDC_KEY);
+        this.plugin = plugin;
+
+        String raw = plugin.getConfig().getString("hologram.provider", "NATIVE").toUpperCase();
+        Provider selected;
+        try {
+            selected = Provider.valueOf(raw);
+        } catch (IllegalArgumentException e) {
+            plugin.getLogger().warning("[HologramManager] Proveedor inválido '" + raw + "', usando NATIVE.");
+            selected = Provider.NATIVE;
+        }
+
+        // Verificar que GHolo esté disponible si se seleccionó
+        if (selected == Provider.GHOLO
+                && plugin.getServer().getPluginManager().getPlugin("GHolo") == null) {
+            plugin.getLogger().warning("[HologramManager] GHolo no está instalado, usando NATIVE.");
+            selected = Provider.NATIVE;
+        }
+
+        this.providerType = selected;
+
+        if (selected == Provider.GHOLO) {
+            this.provider = new GHoloProvider(plugin);
+            plugin.getLogger().info("[HologramManager] Proveedor: GHolo");
+        } else {
+            this.provider = new NativeHologramProvider(plugin);
+            plugin.getLogger().info("[HologramManager] Proveedor: Native (TextDisplay)");
+        }
     }
 
-    // ── Limpieza inicial ─────────────────────────────────────
+    // ── Limpieza inicial (solo NATIVE) ───────────────────────
 
+    /**
+     * Elimina TextDisplays huérfanas. Solo aplica al proveedor NATIVE.
+     * Debe llamarse en onEnable() antes de loadAll().
+     */
     public void purgeAll() {
-        int count = 0;
-        for (World world : plugin.getServer().getWorlds()) {
-            for (Entity entity : world.getEntities()) {
-                if (entity instanceof TextDisplay td
-                        && td.getPersistentDataContainer().has(holoKey, PersistentDataType.BYTE)) {
-                    td.remove();
-                    count++;
-                }
-            }
+        if (provider instanceof NativeHologramProvider native_) {
+            native_.purgeAll();
         }
-        if (count > 0) {
-            plugin.getLogger().info("[HologramManager] Eliminadas " + count
-                    + " TextDisplay huérfanas de sesiones anteriores.");
-        }
-    }
-
-    // ── API pública ──────────────────────────────────────────
-
-    /** Elimina el holograma anterior y crea uno nuevo. Limpia el cache del bloque. */
-    public void spawnOrUpdate(RegeneratorBlock rb) {
-        removeEntity(rb.getKey());
-
-        // Limpiar cache para forzar re-render completo
-        lastRenderedRegen.remove(rb.getKey());
-        componentCache.remove(rb.getKey());
-
-        Location loc = rb.getLocation().clone().add(0.5,
-                plugin.getConfig().getDouble("hologram.offset-y", 1.5), 0.5);
-        if (loc.getWorld() == null) return;
-
-        TextDisplay display = loc.getWorld().spawn(loc, TextDisplay.class, td -> {
-            td.text(buildComponent(rb));
-            td.setBillboard(Display.Billboard.VERTICAL);
-            td.setShadowed(true);
-            td.setDefaultBackground(true);
-            td.setBackgroundColor(org.bukkit.Color.fromARGB(100, 0, 0, 0));
-            td.setTextOpacity((byte) 255);
-            td.setSeeThrough(false);
-            td.setPersistent(false);
-            td.getPersistentDataContainer().set(holoKey, PersistentDataType.BYTE, (byte) 1);
-
-            float scale = (float) plugin.getConfig().getDouble("hologram.scale", 1.0);
-            td.setTransformation(new Transformation(
-                    new Vector3f(0, 0, 0),
-                    new AxisAngle4f(0, 0, 0, 1),
-                    new Vector3f(scale, scale, scale),
-                    new AxisAngle4f(0, 0, 0, 1)
-            ));
-        });
-
-        hologramUUIDs.put(rb.getKey(), display.getUniqueId());
     }
 
     /**
-     * Actualiza el texto solo si el countdown cambió desde el último render.
-     * Si next_regen es el mismo que el tick anterior, no hace nada.
+     * Limpia huérfanas en un chunk cargado. Solo aplica al proveedor NATIVE.
      */
-    public void updateText(RegeneratorBlock rb) {
-        UUID uid = hologramUUIDs.get(rb.getKey());
-        if (uid == null) {
-            spawnOrUpdate(rb);
-            return;
+    public void purgeChunk(Chunk chunk) {
+        if (provider instanceof NativeHologramProvider native_) {
+            native_.purgeChunk(chunk);
         }
-
-        Entity entity = plugin.getServer().getEntity(uid);
-        if (!(entity instanceof TextDisplay td) || !td.isValid()) {
-            hologramUUIDs.remove(rb.getKey());
-            spawnOrUpdate(rb);
-            return;
-        }
-
-        long currentRegen = rb.getSecondsUntilRegen();
-        Long lastRegen    = lastRenderedRegen.get(rb.getKey());
-
-        // Si el countdown no cambió, reutilizar el Component cacheado sin re-parsear
-        if (lastRegen != null && lastRegen == currentRegen) return;
-
-        Component component = buildComponent(rb);
-        td.text(component);
-        lastRenderedRegen.put(rb.getKey(), currentRegen);
     }
 
-    /** Elimina el holograma de un bloque. */
-    public void remove(RegeneratorBlock rb) {
-        removeEntity(rb.getKey());
-        lastRenderedRegen.remove(rb.getKey());
-        componentCache.remove(rb.getKey());
-    }
+    // ── Delegación al proveedor ──────────────────────────────
 
-    /** Elimina todos los hologramas (onDisable). */
-    public void removeAll() {
-        for (UUID uid : hologramUUIDs.values()) {
-            Entity e = plugin.getServer().getEntity(uid);
-            if (e != null && e.isValid()) e.remove();
-        }
-        hologramUUIDs.clear();
-        lastRenderedRegen.clear();
-        componentCache.clear();
-    }
+    public void spawnOrUpdate(RegeneratorBlock rb) { provider.spawnOrUpdate(rb); }
+    public void updateText(RegeneratorBlock rb)    { provider.updateText(rb); }
+    public void remove(RegeneratorBlock rb)        { provider.remove(rb); }
+    public void removeAll()                        { provider.removeAll(); }
 
-    // ── Helpers ──────────────────────────────────────────────
-
-    private void removeEntity(String key) {
-        UUID uid = hologramUUIDs.remove(key);
-        if (uid == null) return;
-        Entity e = plugin.getServer().getEntity(uid);
-        if (e != null && e.isValid()) e.remove();
-    }
-
-    private Component buildComponent(RegeneratorBlock rb) {
-        var upgradeLevel = plugin.getUpgradeManager().getLevel(rb.getLevel());
-        List<String> lines = plugin.getConfig().getStringList("hologram.lines");
-
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < lines.size(); i++) {
-            sb.append(lines.get(i));
-            if (i < lines.size() - 1) sb.append("\n");
-        }
-
-        String raw = sb.toString()
-                .replace("{level}",      String.valueOf(rb.getLevel()))
-                .replace("{radius}",     String.valueOf(upgradeLevel.radius()))
-                .replace("{interval}",   String.valueOf(upgradeLevel.regenInterval()))
-                .replace("{next_regen}", String.valueOf(rb.getSecondsUntilRegen()));
-
-        return MM.deserialize(convertLegacyToMiniMessage(raw));
-    }
-
-    private String convertLegacyToMiniMessage(String input) {
-        return input
-                .replace("&0", "<black>")        .replace("&1", "<dark_blue>")
-                .replace("&2", "<dark_green>")   .replace("&3", "<dark_aqua>")
-                .replace("&4", "<dark_red>")     .replace("&5", "<dark_purple>")
-                .replace("&6", "<gold>")         .replace("&7", "<gray>")
-                .replace("&8", "<dark_gray>")    .replace("&9", "<blue>")
-                .replace("&a", "<green>")        .replace("&b", "<aqua>")
-                .replace("&c", "<red>")          .replace("&d", "<light_purple>")
-                .replace("&e", "<yellow>")       .replace("&f", "<white>")
-                .replace("&k", "<obfuscated>")   .replace("&l", "<bold>")
-                .replace("&m", "<strikethrough>").replace("&n", "<underlined>")
-                .replace("&o", "<italic>")       .replace("&r", "<reset>")
-                .replace("&A", "<green>")        .replace("&B", "<aqua>")
-                .replace("&C", "<red>")          .replace("&D", "<light_purple>")
-                .replace("&E", "<yellow>")       .replace("&F", "<white>")
-                .replace("&K", "<obfuscated>")   .replace("&L", "<bold>")
-                .replace("&M", "<strikethrough>").replace("&N", "<underlined>")
-                .replace("&O", "<italic>")       .replace("&R", "<reset>");
-    }
+    public Provider getProviderType() { return providerType; }
 }
