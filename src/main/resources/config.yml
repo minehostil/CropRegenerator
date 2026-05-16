@@ -2,6 +2,13 @@
 # ║         CropRegenerator Config           ║
 # ╚══════════════════════════════════════════╝
 
+# ──────────────────────────────────────────
+# PROVEEDOR DE HOLOGRAMAS
+# NATIVE → usa TextDisplay nativo de Paper (sin dependencias extra)
+# GHOLO  → usa el plugin GHolo (debe estar instalado)
+# ──────────────────────────────────────────
+hologram-provider: NATIVE
+
 # Material del bloque regenerador (debe ser un bloque válido de Minecraft)
 block-material: EMERALD_BLOCK
 
@@ -65,6 +72,8 @@ upgrades:
 # HOLOGRAMA (Display Entity)
 # ──────────────────────────────────────────
 hologram:
+  # Proveedor de hologramas: NATIVE (TextDisplay, sin dependencias) o GHOLO (requiere GHolo instalado)
+  provider: NATIVE
   # Offset Y sobre el bloque
   offset-y: 1.5
   # Cada cuántos segundos se actualiza el texto del holograma (mínimo 1)
@@ -73,11 +82,12 @@ hologram:
   scale: 1.0
   # Líneas del holograma — placeholders disponibles:
   # {level} {radius} {interval} {owner} {next_regen}
+  # Soporta & codes (&a, &l, &r, etc.) y hex (&#RRGGBB)
   lines:
-    - "<gradient:#00ff00:#00cc00><bold>✦ Regenerador ✦</bold></gradient>"
-    - "<gray>Área: <green>{radius} bloques"
-    - "<gray>Recarga: <yellow>{interval}s"
-    - "<dark_gray>⏳ Próx: <white>{next_regen}s"
+    - "&a&l✦ Regenerador ✦"
+    - "&7Área: &a{radius} bloques"
+    - "&7Recarga: &e{interval}s"
+    - "&8⏳ Próx: &f{next_regen}s"
 
 # ──────────────────────────────────────────
 # MENSAJES
