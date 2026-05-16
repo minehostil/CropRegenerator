@@ -39,11 +39,6 @@
             <id>placeholderapi</id>
             <url>https://repo.helpch.at/releases</url>
         </repository>
-        <!-- FancyHolograms -->
-        <repository>
-            <id>fancyinnovations-releases</id>
-            <url>https://repo.fancyinnovations.com/releases</url>
-        </repository>
         <!-- EngineHub (WorldEdit / FAWE) -->
         <repository>
             <id>enginehub</id>
@@ -77,7 +72,7 @@
         <dependency>
             <groupId>com.github.Gecolay.GHolo</groupId>
             <artifactId>core</artifactId>
-            <version>2.3.2</version>
+            <version>2.2.6</version>
             <scope>provided</scope>
         </dependency>
 
@@ -86,14 +81,6 @@
             <groupId>com.bgsoftware</groupId>
             <artifactId>SuperiorSkyblockAPI</artifactId>
             <version>2024.2</version>
-            <scope>provided</scope>
-        </dependency>
-
-        <!-- FancyHolograms API (optional) -->
-        <dependency>
-            <groupId>de.oliver</groupId>
-            <artifactId>FancyHolograms</artifactId>
-            <version>2.9.1</version>
             <scope>provided</scope>
         </dependency>
 
