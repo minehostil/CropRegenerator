@@ -54,8 +54,9 @@ public class RegeneratorManager {
         int updateSecs = Math.max(1, plugin.getConfig().getInt("hologram.update-interval", 1));
         long updateTicks = updateSecs * 20L;
 
-        // Pre-calcular si hay líneas dinámicas para evitar el check por cada bloque cada tick
-        boolean hasDynamic = plugin.getConfig().getStringList("hologram.lines")
+        // update-countdown: false desactiva completamente la actualización del countdown
+        boolean updateCountdown = plugin.getConfig().getBoolean("hologram.update-countdown", true);
+        boolean hasDynamic = updateCountdown && plugin.getConfig().getStringList("hologram.lines")
                 .stream().anyMatch(l -> l.contains("{next_regen}"));
 
         globalTask = new BukkitRunnable() {
@@ -100,6 +101,13 @@ public class RegeneratorManager {
     /** Reanuda el task global (jugador se conectó). */
     public void resume() {
         if (globalTask == null) startAll();
+    }
+
+    /** Recarga la configuración — reinicia el task con los nuevos valores. */
+    public void reload() {
+        loadCrops();
+        stopAll();
+        if (!plugin.getServer().getOnlinePlayers().isEmpty()) startAll();
     }
 
     private void regenerateAsync(RegeneratorBlock rb) {
