@@ -1,7 +1,6 @@
 package com.tuservidor.cropregenerator.managers;
 
 import com.tuservidor.cropregenerator.CropRegeneratorPlugin;
-import com.tuservidor.cropregenerator.hologram.IHologramProvider;
 import com.tuservidor.cropregenerator.hologram.NativeHologramProvider;
 import com.tuservidor.cropregenerator.model.RegeneratorBlock;
 import org.bukkit.Chunk;
