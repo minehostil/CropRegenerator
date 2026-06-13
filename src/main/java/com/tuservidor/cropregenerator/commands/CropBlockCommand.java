@@ -21,10 +21,11 @@ import java.util.List;
 import java.util.stream.IntStream;
 
 /**
- * /cropblock <help|give|upgradeblock|info>
+ * /cropblock <help|give|upgradeblock|info|reload>
  *
  * upgradeblock — solo consola o cropregenerator.admin
  *   Uso: /cropblock upgradeblock <mundo> <x> <y> <z> <nivel>
+ * reload — solo cropregenerator.admin
  */
 public class CropBlockCommand implements CommandExecutor, TabCompleter {
 
@@ -152,6 +153,27 @@ public class CropBlockCommand implements CommandExecutor, TabCompleter {
                 ));
             }
 
+            // ── /cropblock reload ────────────────────────────
+            case "reload" -> {
+                if (!sender.hasPermission("cropregenerator.admin")) {
+                    MessageUtil.send(sender, "no-permission");
+                    return true;
+                }
+
+                plugin.reloadConfig();
+                plugin.getUpgradeManager().reload(plugin);
+                plugin.getRegeneratorManager().reload();
+
+                // Reconstruir cache estático de todos los hologramas activos
+                for (com.tuservidor.cropregenerator.model.RegeneratorBlock rb
+                        : plugin.getBlockDataManager().getAllBlocks()) {
+                    plugin.getHologramManager().spawnOrUpdate(rb);
+                }
+
+                sender.sendMessage(MM.deserialize(
+                        "<dark_green>[<green>CropRegen<dark_green>] <green>Configuración recargada correctamente."));
+            }
+
             default -> sendHelp(sender);
         }
         return true;
@@ -188,6 +210,7 @@ public class CropBlockCommand implements CommandExecutor, TabCompleter {
         if (isAdmin) {
             sb.append("\n<yellow>/cropblock upgradeblock <mundo> <x> <y> <z> <nivel> " +
                       "<gray>- Mejora un bloque por coordenadas");
+            sb.append("\n<yellow>/cropblock reload <gray>- Recarga la configuración");
         }
         sender.sendMessage(MM.deserialize(sb.toString()));
     }
@@ -202,7 +225,7 @@ public class CropBlockCommand implements CommandExecutor, TabCompleter {
 
         if (args.length == 1) {
             List<String> base = new java.util.ArrayList<>(List.of("give", "info", "help"));
-            if (isAdmin) base.add("upgradeblock");
+            if (isAdmin) { base.add("upgradeblock"); base.add("reload"); }
             return base;
         }
 
