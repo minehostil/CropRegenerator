@@ -54,6 +54,10 @@ public class RegeneratorManager {
         int updateSecs = Math.max(1, plugin.getConfig().getInt("hologram.update-interval", 1));
         long updateTicks = updateSecs * 20L;
 
+        // Pre-calcular si hay líneas dinámicas para evitar el check por cada bloque cada tick
+        boolean hasDynamic = plugin.getConfig().getStringList("hologram.lines")
+                .stream().anyMatch(l -> l.contains("{next_regen}"));
+
         globalTask = new BukkitRunnable() {
             @Override
             public void run() {
@@ -66,8 +70,8 @@ public class RegeneratorManager {
                     if (!loc.getWorld().isChunkLoaded(
                             loc.getBlockX() >> 4, loc.getBlockZ() >> 4)) continue;
 
-                    // Actualizar holograma solo si el chunk está cargado
-                    plugin.getHologramManager().updateText(rb);
+                    // Solo actualizar holograma si hay líneas dinámicas
+                    if (hasDynamic) plugin.getHologramManager().updateText(rb);
 
                     // Regenerar si llegó la hora
                     if (now >= rb.getNextRegenTimestamp()) {
