@@ -148,7 +148,8 @@ public class NativeHologramProvider {
 
         long currentRegen = rb.getSecondsUntilRegen();
         Long lastRegen    = lastRenderedRegen.get(rb.getKey());
-        if (lastRegen != null && lastRegen == currentRegen) return;
+        // Usar longValue() para evitar el fallo de == con Long > 127 (autoboxing)
+        if (lastRegen != null && lastRegen.longValue() == currentRegen) return;
 
         // Solo parsear la línea dinámica, combinar con el cache estático
         td.text(buildFull(rb, currentRegen));
