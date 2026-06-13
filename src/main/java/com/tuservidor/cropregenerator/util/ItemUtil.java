@@ -3,6 +3,7 @@ package com.tuservidor.cropregenerator.util;
 import com.tuservidor.cropregenerator.CropRegeneratorPlugin;
 import com.tuservidor.cropregenerator.managers.UpgradeManager;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -53,7 +54,8 @@ public class ItemUtil {
         ItemMeta meta  = item.getItemMeta();
 
         // ── Nombre ───────────────────────────────────────────
-        meta.displayName(LEGACY.deserialize(upgLevel.displayName()));
+        meta.displayName(LEGACY.deserialize(upgLevel.displayName())
+                .decoration(TextDecoration.ITALIC, false));
 
         // ── Lore desde config ────────────────────────────────
         List<String> rawLines = plugin.getConfig().getStringList("item.lore");
@@ -66,7 +68,9 @@ public class ItemUtil {
                     .replace("{interval}",   String.valueOf(upgLevel.regenInterval()))
                     .replace("{max_blocks}", String.valueOf(upgLevel.maxBlocksPerIsland()));
 
-            lore.add(parsed.isEmpty() ? Component.empty() : LEGACY.deserialize(parsed));
+            lore.add(parsed.isEmpty()
+                    ? Component.empty().decoration(TextDecoration.ITALIC, false)
+                    : LEGACY.deserialize(parsed).decoration(TextDecoration.ITALIC, false));
         }
 
         meta.lore(lore);
