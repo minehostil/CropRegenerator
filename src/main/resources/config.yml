@@ -67,7 +67,11 @@ upgrades:
 hologram:
   # Offset Y sobre el bloque
   offset-y: 1.5
-  # Cada cuántos segundos se actualiza el texto del holograma (mínimo 1)
+  # Actualizar el countdown ({next_regen}) en tiempo real
+  # false = el holograma nunca se actualiza (mejor rendimiento)
+  update-countdown: true
+  # Cada cuántos segundos se actualiza el countdown (mínimo 1)
+  # Solo aplica si update-countdown: true
   update-interval: 1
   # Escala del texto
   scale: 1.0
