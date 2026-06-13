@@ -3,6 +3,7 @@ package com.tuservidor.cropregenerator.hologram;
 import com.tuservidor.cropregenerator.CropRegeneratorPlugin;
 import com.tuservidor.cropregenerator.model.RegeneratorBlock;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
@@ -19,11 +20,17 @@ import java.util.*;
 
 /**
  * Proveedor nativo usando TextDisplay de Paper (1.19.4+).
- * No requiere plugins externos.
+ *
+ * Optimización de texto:
+ *  - Las líneas del config se dividen en "estáticas" (sin {next_regen})
+ *    y "dinámicas" (contienen {next_regen}).
+ *  - La parte estática se pre-parsea UNA SOLA VEZ al crear/mejorar el bloque
+ *    y se cachea en staticCache.
+ *  - Cada segundo solo se parsea la línea dinámica (una sola línea corta)
+ *    y se combina con el Component cacheado.
  */
-public class NativeHologramProvider implements IHologramProvider {
+public class NativeHologramProvider {
 
-    // LegacyComponentSerializer soporta & y &#RRGGBB (hex)
     private static final LegacyComponentSerializer LEGACY =
             LegacyComponentSerializer.builder()
                     .character('&')
@@ -31,20 +38,38 @@ public class NativeHologramProvider implements IHologramProvider {
                     .useUnusualXRepeatedCharacterHexFormat()
                     .build();
 
-    private static final String PDC_KEY = "cropgen_hologram";
+    private static final String PDC_KEY      = "cropgen_hologram";
+    private static final String DYNAMIC_TAG  = "{next_regen}";
 
     private final CropRegeneratorPlugin plugin;
     private final NamespacedKey holoKey;
 
-    private final Map<String, UUID> hologramUUIDs    = new HashMap<>();
-    private final Map<String, Long> lastRenderedRegen = new HashMap<>();
+    private final Map<String, UUID>      hologramUUIDs = new HashMap<>();
+    private final Map<String, Long>      lastRenderedRegen = new HashMap<>();
+
+    // key → Component pre-parseado de las líneas estáticas
+    private final Map<String, Component> staticCache = new HashMap<>();
+
+    // key → plantilla raw de la línea dinámica (solo el string con {next_regen})
+    private final Map<String, String>    dynamicTemplate = new HashMap<>();
+
+    // true si hay alguna línea dinámica en el config
+    private boolean hasDynamicLine = false;
 
     public NativeHologramProvider(CropRegeneratorPlugin plugin) {
         this.plugin  = plugin;
         this.holoKey = new NamespacedKey(plugin, PDC_KEY);
+        checkDynamicLines();
     }
 
-    /** Limpia TextDisplays huérfanas de sesiones anteriores. Llamar en onEnable. */
+    /** Detecta si hay líneas dinámicas en el config para evitar trabajo innecesario. */
+    private void checkDynamicLines() {
+        hasDynamicLine = plugin.getConfig().getStringList("hologram.lines")
+                .stream().anyMatch(l -> l.contains(DYNAMIC_TAG));
+    }
+
+    // ── Limpieza ─────────────────────────────────────────────
+
     public void purgeAll() {
         int count = 0;
         for (World world : plugin.getServer().getWorlds()) {
@@ -60,7 +85,6 @@ public class NativeHologramProvider implements IHologramProvider {
             plugin.getLogger().info("[HologramManager] Eliminadas " + count + " TextDisplay huérfanas.");
     }
 
-    /** Verifica si un chunk tiene TextDisplays huérfanas y las elimina. */
     public void purgeChunk(org.bukkit.Chunk chunk) {
         if (chunk.getEntities().length == 0) return;
         for (Entity entity : chunk.getEntities()) {
@@ -72,17 +96,21 @@ public class NativeHologramProvider implements IHologramProvider {
         }
     }
 
-    @Override
+    // ── API pública ──────────────────────────────────────────
+
     public void spawnOrUpdate(RegeneratorBlock rb) {
         removeEntity(rb.getKey());
         lastRenderedRegen.remove(rb.getKey());
+
+        // Construir y cachear la parte estática
+        buildStaticCache(rb);
 
         Location loc = rb.getLocation().clone().add(0.5,
                 plugin.getConfig().getDouble("hologram.offset-y", 1.5), 0.5);
         if (loc.getWorld() == null) return;
 
         TextDisplay display = loc.getWorld().spawn(loc, TextDisplay.class, td -> {
-            td.text(buildComponent(rb));
+            td.text(buildFull(rb, rb.getSecondsUntilRegen()));
             td.setBillboard(Display.Billboard.VERTICAL);
             td.setShadowed(true);
             td.setDefaultBackground(true);
@@ -104,7 +132,6 @@ public class NativeHologramProvider implements IHologramProvider {
         hologramUUIDs.put(rb.getKey(), display.getUniqueId());
     }
 
-    @Override
     public void updateText(RegeneratorBlock rb) {
         UUID uid = hologramUUIDs.get(rb.getKey());
         if (uid == null) { spawnOrUpdate(rb); return; }
@@ -116,21 +143,25 @@ public class NativeHologramProvider implements IHologramProvider {
             return;
         }
 
+        // Si no hay línea dinámica, nunca hay que actualizar el texto
+        if (!hasDynamicLine) return;
+
         long currentRegen = rb.getSecondsUntilRegen();
         Long lastRegen    = lastRenderedRegen.get(rb.getKey());
         if (lastRegen != null && lastRegen == currentRegen) return;
 
-        td.text(buildComponent(rb));
+        // Solo parsear la línea dinámica, combinar con el cache estático
+        td.text(buildFull(rb, currentRegen));
         lastRenderedRegen.put(rb.getKey(), currentRegen);
     }
 
-    @Override
     public void remove(RegeneratorBlock rb) {
         removeEntity(rb.getKey());
         lastRenderedRegen.remove(rb.getKey());
+        staticCache.remove(rb.getKey());
+        dynamicTemplate.remove(rb.getKey());
     }
 
-    @Override
     public void removeAll() {
         for (UUID uid : hologramUUIDs.values()) {
             Entity e = plugin.getServer().getEntity(uid);
@@ -138,6 +169,8 @@ public class NativeHologramProvider implements IHologramProvider {
         }
         hologramUUIDs.clear();
         lastRenderedRegen.clear();
+        staticCache.clear();
+        dynamicTemplate.clear();
     }
 
     // ── Helpers ──────────────────────────────────────────────
@@ -150,28 +183,56 @@ public class NativeHologramProvider implements IHologramProvider {
     }
 
     /**
-     * Construye el Component del holograma.
-     * Soporta:
-     *   & codes  → &a, &l, &r, etc.
-     *   Hex      → &#RRGGBB  (formato &#ffffff)
-     * MiniMessage fue removido por impacto en rendimiento.
+     * Pre-parsea todas las líneas que NO contienen {next_regen} y las guarda
+     * como un único Component cacheado. También guarda la plantilla de la línea
+     * dinámica para reemplazar solo el número cada tick.
      */
-    private Component buildComponent(RegeneratorBlock rb) {
+    private void buildStaticCache(RegeneratorBlock rb) {
         var upgradeLevel = plugin.getUpgradeManager().getLevel(rb.getLevel());
         List<String> lines = plugin.getConfig().getStringList("hologram.lines");
 
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < lines.size(); i++) {
-            sb.append(lines.get(i));
-            if (i < lines.size() - 1) sb.append("\n");
+        TextComponent.Builder staticBuilder = Component.text();
+        String dynTemplate = null;
+        boolean firstStatic = true;
+
+        for (String line : lines) {
+            // Reemplazar placeholders estáticos
+            String resolved = line
+                    .replace("{level}",    String.valueOf(rb.getLevel()))
+                    .replace("{radius}",   String.valueOf(upgradeLevel.radius()))
+                    .replace("{interval}", String.valueOf(upgradeLevel.regenInterval()));
+
+            if (resolved.contains(DYNAMIC_TAG)) {
+                // Guardar plantilla dinámica con {next_regen} intacto
+                dynTemplate = resolved;
+            } else {
+                if (!firstStatic) staticBuilder.appendNewline();
+                staticBuilder.append(LEGACY.deserialize(resolved));
+                firstStatic = false;
+            }
         }
 
-        String raw = sb.toString()
-                .replace("{level}",      String.valueOf(rb.getLevel()))
-                .replace("{radius}",     String.valueOf(upgradeLevel.radius()))
-                .replace("{interval}",   String.valueOf(upgradeLevel.regenInterval()))
-                .replace("{next_regen}", String.valueOf(rb.getSecondsUntilRegen()));
+        staticCache.put(rb.getKey(), staticBuilder.build());
+        if (dynTemplate != null) dynamicTemplate.put(rb.getKey(), dynTemplate);
+    }
 
-        return LEGACY.deserialize(raw);
+    /**
+     * Combina el Component estático cacheado con la línea dinámica parseada
+     * en tiempo real (solo una línea corta).
+     */
+    private Component buildFull(RegeneratorBlock rb, long secondsUntilRegen) {
+        Component staticPart = staticCache.getOrDefault(rb.getKey(), Component.empty());
+        String dynTemplate   = dynamicTemplate.get(rb.getKey());
+
+        if (dynTemplate == null) return staticPart;
+
+        String dynResolved = dynTemplate.replace(DYNAMIC_TAG, String.valueOf(secondsUntilRegen));
+        Component dynPart  = LEGACY.deserialize(dynResolved);
+
+        // Si hay parte estática, añadir salto de línea entre ambas
+        if (!staticPart.equals(Component.empty())) {
+            return staticPart.append(Component.newline()).append(dynPart);
+        }
+        return dynPart;
     }
 }
