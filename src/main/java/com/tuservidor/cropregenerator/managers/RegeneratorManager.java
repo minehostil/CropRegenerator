@@ -49,6 +49,7 @@ public class RegeneratorManager {
 
     public RegeneratorManager(CropRegeneratorPlugin plugin) {
         this.plugin = plugin;
+        loadCrops();
     }
 
     public void startAll() {
