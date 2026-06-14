@@ -49,11 +49,6 @@ public class SuperiorSkyblockHook {
         return island != null ? island.getUniqueId().toString() : null;
     }
 
-    /** ID único de la isla en una ubicación, o null. */
-    public String getIslandIdAt(org.bukkit.Location location) {
-        Island island = SuperiorSkyblockAPI.getIslandAt(location);
-        return island != null ? island.getUniqueId().toString() : null;
-    }
 
     /** Cuántos bloques regeneradores puede tener la isla según el nivel del upgrade. */
     public int getMaxBlocks(Player player, int upgradeLevel) {
