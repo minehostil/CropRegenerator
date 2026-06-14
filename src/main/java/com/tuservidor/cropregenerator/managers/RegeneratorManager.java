@@ -24,21 +24,25 @@ import java.util.Map;
  */
 public class RegeneratorManager {
 
-    private static final Map<String, Integer> CROP_MAX_AGE = new HashMap<>();
+    // Todos los cultivos soportados con su age máximo
+    private static final Map<String, Integer> ALL_CROPS = new HashMap<>();
 
     static {
-        CROP_MAX_AGE.put("minecraft:wheat",            7);
-        CROP_MAX_AGE.put("minecraft:carrots",          7);
-        CROP_MAX_AGE.put("minecraft:potatoes",         7);
-        CROP_MAX_AGE.put("minecraft:beetroots",        3);
-        CROP_MAX_AGE.put("minecraft:nether_wart",      3);
-        CROP_MAX_AGE.put("minecraft:cocoa",            2);
-        CROP_MAX_AGE.put("minecraft:melon_stem",       7);
-        CROP_MAX_AGE.put("minecraft:pumpkin_stem",     7);
-        CROP_MAX_AGE.put("minecraft:sweet_berry_bush", 3);
-        CROP_MAX_AGE.put("minecraft:pitcher_crop",     4);
-        CROP_MAX_AGE.put("minecraft:torchflower_crop", 1);
+        ALL_CROPS.put("minecraft:wheat",            7);
+        ALL_CROPS.put("minecraft:carrots",          7);
+        ALL_CROPS.put("minecraft:potatoes",         7);
+        ALL_CROPS.put("minecraft:beetroots",        3);
+        ALL_CROPS.put("minecraft:nether_wart",      3);
+        ALL_CROPS.put("minecraft:cocoa",            2);
+        ALL_CROPS.put("minecraft:melon_stem",       7);
+        ALL_CROPS.put("minecraft:pumpkin_stem",     7);
+        ALL_CROPS.put("minecraft:sweet_berry_bush", 3);
+        ALL_CROPS.put("minecraft:pitcher_crop",     4);
+        ALL_CROPS.put("minecraft:torchflower_crop", 1);
     }
+
+    // Cultivos activos según config.yml → crops
+    private final Map<String, Integer> CROP_MAX_AGE = new HashMap<>();
 
     private final CropRegeneratorPlugin plugin;
     private BukkitTask globalTask;
@@ -101,6 +105,21 @@ public class RegeneratorManager {
     /** Reanuda el task global (jugador se conectó). */
     public void resume() {
         if (globalTask == null) startAll();
+    }
+
+    /** Carga los cultivos activos desde config.yml. */
+    private void loadCrops() {
+        CROP_MAX_AGE.clear();
+        for (Map.Entry<String, Integer> entry : ALL_CROPS.entrySet()) {
+            String configKey = entry.getKey().replace("minecraft:", "");
+            if (plugin.getConfig().getBoolean("crops." + configKey, true)) {
+                CROP_MAX_AGE.put(entry.getKey(), entry.getValue());
+            }
+        }
+        if (plugin.getConfig().getBoolean("debug-crops", false)) {
+            plugin.getLogger().info("[CropRegen] Cultivos activos: " + CROP_MAX_AGE.keySet()
+                    .stream().map(k -> k.replace("minecraft:", "")).toList());
+        }
     }
 
     /** Recarga la configuración — reinicia el task con los nuevos valores. */
