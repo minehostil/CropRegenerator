@@ -45,6 +45,7 @@ public class NativeHologramProvider {
     private final NamespacedKey holoKey;
 
     private final Map<String, UUID>      hologramUUIDs = new HashMap<>();
+    private final Set<UUID>               registeredUUIDs = new HashSet<>();
     private final Map<String, Long>      lastRenderedRegen = new HashMap<>();
 
     // key → Component pre-parseado de las líneas estáticas
@@ -90,7 +91,7 @@ public class NativeHologramProvider {
         for (Entity entity : chunk.getEntities()) {
             if (entity instanceof TextDisplay td
                     && td.getPersistentDataContainer().has(holoKey, PersistentDataType.BYTE)
-                    && !hologramUUIDs.containsValue(td.getUniqueId())) {
+                    && !registeredUUIDs.contains(td.getUniqueId())) {
                 td.remove();
             }
         }
@@ -129,7 +130,9 @@ public class NativeHologramProvider {
             ));
         });
 
-        hologramUUIDs.put(rb.getKey(), display.getUniqueId());
+        UUID uid = display.getUniqueId();
+        hologramUUIDs.put(rb.getKey(), uid);
+        registeredUUIDs.add(uid);
     }
 
     public void updateText(RegeneratorBlock rb) {
@@ -169,6 +172,7 @@ public class NativeHologramProvider {
             if (e != null && e.isValid()) e.remove();
         }
         hologramUUIDs.clear();
+        registeredUUIDs.clear();
         lastRenderedRegen.clear();
         staticCache.clear();
         dynamicTemplate.clear();
@@ -179,6 +183,7 @@ public class NativeHologramProvider {
     private void removeEntity(String key) {
         UUID uid = hologramUUIDs.remove(key);
         if (uid == null) return;
+        registeredUUIDs.remove(uid);
         Entity e = plugin.getServer().getEntity(uid);
         if (e != null && e.isValid()) e.remove();
     }
@@ -231,7 +236,8 @@ public class NativeHologramProvider {
         Component dynPart  = LEGACY.deserialize(dynResolved);
 
         // Si hay parte estática, añadir salto de línea entre ambas
-        if (!staticPart.equals(Component.empty())) {
+        // Comparar con hasChildren() evita el costoso Component.equals()
+        if (staticPart instanceof TextComponent tc && (tc.content().length() > 0 || !tc.children().isEmpty())) {
             return staticPart.append(Component.newline()).append(dynPart);
         }
         return dynPart;
