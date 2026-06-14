@@ -99,18 +99,18 @@ public class PlaceholderHook extends PlaceholderExpansion {
         Collection<RegeneratorBlock> all = plugin.getBlockDataManager().getAllBlocks();
 
         if (plugin.hasSuperior()) {
-            String islandId = plugin.getSuperiorHook().getPlayerIslandId(player);
+            // Buscar por ubicación del jugador — funciona para dueños y miembros
+            String islandId = plugin.getSuperiorHook().getIslandIdAt(player.getLocation());
+            // Fallback: isla propia si no está parado en ninguna isla
+            if (islandId == null) {
+                islandId = plugin.getSuperiorHook().getPlayerIslandId(player);
+            }
             if (islandId == null) return java.util.List.of();
 
-            // Filtrar por isla
+            final String finalIslandId = islandId;
             return all.stream()
-                    .filter(rb -> {
-                        // Reusamos el contador que ya tiene BlockDataManager
-                        // Necesitamos obtener el islandId del bloque — lo hacemos
-                        // filtrando por owner o por isla
-                        String bid = plugin.getBlockDataManager().getIslandIdForBlock(rb);
-                        return islandId.equals(bid);
-                    })
+                    .filter(rb -> finalIslandId.equals(
+                            plugin.getBlockDataManager().getIslandIdForBlock(rb)))
                     .toList();
         }
 
