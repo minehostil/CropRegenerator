@@ -1,6 +1,5 @@
 package com.tuservidor.cropregenerator.managers;
 
-import com.fastasyncworldedit.core.FaweAPI;
 import com.sk89q.worldedit.EditSession;
 import com.sk89q.worldedit.WorldEdit;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
@@ -17,6 +16,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -68,7 +68,7 @@ public class RegeneratorManager {
             @Override
             public void run() {
                 long now = System.currentTimeMillis();
-                for (RegeneratorBlock rb : plugin.getBlockDataManager().getAllBlocks()) {
+                for (RegeneratorBlock rb : List.copyOf(plugin.getBlockDataManager().getAllBlocks())) {
                     Location loc = rb.getLocation();
                     if (loc.getWorld() == null) continue;
 
@@ -188,7 +188,7 @@ public class RegeneratorManager {
 
             } catch (Exception e) {
                 plugin.getLogger().warning("[FAWE] Error al regenerar cultivos: " + e.getMessage());
-                e.printStackTrace();
+                plugin.getLogger().warning("[FAWE] Causa: " + e.getCause());
             }
         });
     }
