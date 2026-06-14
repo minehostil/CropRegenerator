@@ -3,7 +3,6 @@ package com.tuservidor.cropregenerator;
 import com.tuservidor.cropregenerator.commands.CropBlockCommand;
 import com.tuservidor.cropregenerator.data.BlockDataManager;
 import com.tuservidor.cropregenerator.hooks.FAWEHook;
-import com.tuservidor.cropregenerator.hooks.PlaceholderHook;
 import com.tuservidor.cropregenerator.hooks.SuperiorSkyblockHook;
 import com.tuservidor.cropregenerator.listeners.BlockListener;
 import com.tuservidor.cropregenerator.listeners.ChunkLoadListener;
@@ -45,12 +44,6 @@ public class CropRegeneratorPlugin extends JavaPlugin {
             getServer().getPluginManager().registerEvents(new IslandListener(this), this);
         } else {
             getLogger().warning("SuperiorSkyblock2 no encontrado — límites de isla desactivados.");
-        }
-
-        // Hook de PlaceholderAPI
-        if (getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
-            new PlaceholderHook(this).register();
-            getLogger().info("PlaceholderAPI detectado — placeholders registrados.");
         }
 
         // Listeners y comandos
