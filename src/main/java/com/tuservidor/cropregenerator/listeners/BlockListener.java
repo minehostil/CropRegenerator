@@ -42,7 +42,7 @@ public class BlockListener implements Listener {
                 return;
             }
 
-            String islandId = plugin.getSuperiorHook().getPlayerIslandId(player);
+            String islandId = plugin.getSuperiorHook().getIslandIdAt(block.getLocation());
             int current     = plugin.getBlockDataManager().countBlocksForIsland(islandId);
             int max         = plugin.getUpgradeManager().getLevel(itemLevel).maxBlocksPerIsland();
 
