@@ -43,17 +43,16 @@ public class SuperiorSkyblockHook {
         return islandAt.isMember(sp) || islandAt.getOwner().equals(sp);
     }
 
-    /** ID único de la isla del jugador como String, o null.
-     *  Primero intenta la isla donde está parado (cubre miembros),
-     *  si no tiene, intenta la isla propia (owner). */
+    /** ID único de la isla del jugador como String, o null. */
     public String getPlayerIslandId(Player player) {
-        // Intentar por ubicación primero — cubre dueños y miembros
-        Island islandAt = SuperiorSkyblockAPI.getIslandAt(player.getLocation());
-        if (islandAt != null) return islandAt.getUniqueId().toString();
+        Island island = getIslandOf(player);
+        return island != null ? island.getUniqueId().toString() : null;
+    }
 
-        // Fallback: isla propia si no está parado en ninguna isla
-        Island ownIsland = getIslandOf(player);
-        return ownIsland != null ? ownIsland.getUniqueId().toString() : null;
+    /** ID único de la isla en una ubicación, o null. */
+    public String getIslandIdAt(org.bukkit.Location location) {
+        Island island = SuperiorSkyblockAPI.getIslandAt(location);
+        return island != null ? island.getUniqueId().toString() : null;
     }
 
     /** Cuántos bloques regeneradores puede tener la isla según el nivel del upgrade. */
