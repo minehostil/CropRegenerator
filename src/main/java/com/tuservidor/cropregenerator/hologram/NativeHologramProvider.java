@@ -7,7 +7,6 @@ import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
-import org.bukkit.World;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.TextDisplay;
@@ -67,34 +66,6 @@ public class NativeHologramProvider {
     private void checkDynamicLines() {
         hasDynamicLine = plugin.getConfig().getStringList("hologram.lines")
                 .stream().anyMatch(l -> l.contains(DYNAMIC_TAG));
-    }
-
-    // ── Limpieza ─────────────────────────────────────────────
-
-    public void purgeAll() {
-        int count = 0;
-        for (World world : plugin.getServer().getWorlds()) {
-            for (Entity entity : world.getEntities()) {
-                if (entity instanceof TextDisplay td
-                        && td.getPersistentDataContainer().has(holoKey, PersistentDataType.BYTE)) {
-                    td.remove();
-                    count++;
-                }
-            }
-        }
-        if (count > 0)
-            plugin.getLogger().info("[HologramManager] Eliminadas " + count + " TextDisplay huérfanas.");
-    }
-
-    public void purgeChunk(org.bukkit.Chunk chunk) {
-        if (chunk.getEntities().length == 0) return;
-        for (Entity entity : chunk.getEntities()) {
-            if (entity instanceof TextDisplay td
-                    && td.getPersistentDataContainer().has(holoKey, PersistentDataType.BYTE)
-                    && !registeredUUIDs.contains(td.getUniqueId())) {
-                td.remove();
-            }
-        }
     }
 
     // ── API pública ──────────────────────────────────────────
