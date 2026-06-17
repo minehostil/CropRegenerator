@@ -56,9 +56,6 @@ public class CropRegeneratorPlugin extends JavaPlugin {
         getCommand("cropblock").setExecutor(cmd);
         getCommand("cropblock").setTabCompleter(cmd);
 
-        // Limpiar TextDisplays huérfanas de sesiones anteriores
-        hologramManager.purgeAll();
-
         // Cargar datos persistentes y restaurar hologramas
         blockDataManager.loadAll();
         // Solo iniciar el task si hay jugadores conectados (evita consumo en servidor vacío)
