@@ -22,8 +22,8 @@ import java.util.List;
  *
  * Usa LegacyComponentSerializer para nombre y lore — soporta & codes y &#RRGGBB.
  *
- * La cursiva se desactiva explícitamente en todo el árbol de Components
- * para evitar la cursiva predeterminada que puede aplicar Minecraft/Paper.
+ * La cursiva se desactiva explícitamente para evitar la cursiva predeterminada
+ * que aplica Minecraft/Paper a las descripciones/nombres de ítems.
  */
 public class ItemUtil {
 
@@ -44,14 +44,10 @@ public class ItemUtil {
     }
 
     /**
-     * Elimina explícitamente la cursiva de todo el Component,
-     * incluyendo sus componentes hijos.
+     * Desactiva explícitamente la cursiva predeterminada de los ítems.
      */
     private static Component noItalic(Component component) {
-        return component
-                .decoration(TextDecoration.ITALIC, false)
-                .mapChildrenDeep(child ->
-                        child.decoration(TextDecoration.ITALIC, false));
+        return component.decoration(TextDecoration.ITALIC, TextDecoration.State.FALSE);
     }
 
     public static ItemStack createRegeneratorItem(int level) {
