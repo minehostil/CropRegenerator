@@ -208,23 +208,3 @@ public class ItemUtil {
         return lvl != null ? lvl : 1;
     }
 }
-
-Qué cambié
-
-Antes tenías:
-
-LEGACY.deserialize(upgLevel.displayName())
-        .decoration(TextDecoration.ITALIC, false)
-
-Ahora pasa por:
-
-noItalic(LEGACY.deserialize(upgLevel.displayName()))
-
-Y el método:
-
-private static Component noItalic(Component component) {
-    return component
-            .decoration(TextDecoration.ITALIC, false)
-            .mapChildrenDeep(child ->
-                    child.decoration(TextDecoration.ITALIC, false));
-}
