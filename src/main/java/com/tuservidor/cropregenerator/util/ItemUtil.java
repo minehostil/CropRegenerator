@@ -21,7 +21,9 @@ import java.util.List;
  * Utilidades para crear e identificar el ítem del bloque regenerador.
  *
  * Usa LegacyComponentSerializer para nombre y lore — soporta & codes y &#RRGGBB.
- * El &r al inicio de cada línea del lore evita la cursiva que aplica Paper por defecto.
+ *
+ * La cursiva se desactiva explícitamente en todo el árbol de Components
+ * para evitar la cursiva predeterminada que puede aplicar Minecraft/Paper.
  */
 public class ItemUtil {
 
@@ -41,74 +43,188 @@ public class ItemUtil {
         LEVEL_KEY = new NamespacedKey(plugin, "regenerator_level");
     }
 
+    /**
+     * Elimina explícitamente la cursiva de todo el Component,
+     * incluyendo sus componentes hijos.
+     */
+    private static Component noItalic(Component component) {
+        return component
+                .decoration(TextDecoration.ITALIC, false)
+                .mapChildrenDeep(child ->
+                        child.decoration(TextDecoration.ITALIC, false));
+    }
+
     public static ItemStack createRegeneratorItem(int level) {
         CropRegeneratorPlugin plugin = CropRegeneratorPlugin.getInstance();
-        if (REGEN_KEY == null) init(plugin);
 
-        UpgradeManager.UpgradeLevel upgLevel = plugin.getUpgradeManager().getLevel(level);
+        if (REGEN_KEY == null) {
+            init(plugin);
+        }
+
+        UpgradeManager.UpgradeLevel upgLevel =
+                plugin.getUpgradeManager().getLevel(level);
 
         Material mat = Material.valueOf(
-                plugin.getConfig().getString("block-material", "EMERALD_BLOCK"));
+                plugin.getConfig().getString(
+                        "block-material",
+                        "EMERALD_BLOCK"
+                )
+        );
 
         ItemStack item = new ItemStack(mat);
-        ItemMeta meta  = item.getItemMeta();
+        ItemMeta meta = item.getItemMeta();
 
         // ── Nombre ───────────────────────────────────────────
-        meta.displayName(LEGACY.deserialize(upgLevel.displayName())
-                .decoration(TextDecoration.ITALIC, false));
+        Component displayName = LEGACY.deserialize(
+                upgLevel.displayName()
+        );
+
+        meta.displayName(noItalic(displayName));
 
         // ── Lore desde config ────────────────────────────────
-        List<String> rawLines = plugin.getConfig().getStringList("item.lore");
-        List<Component> lore  = new ArrayList<>();
+        List<String> rawLines =
+                plugin.getConfig().getStringList("item.lore");
+
+        List<Component> lore = new ArrayList<>();
 
         for (String line : rawLines) {
-            String parsed = line
-                    .replace("{level}",      String.valueOf(level))
-                    .replace("{radius}",     String.valueOf(upgLevel.radius()))
-                    .replace("{interval}",   String.valueOf(upgLevel.regenInterval()))
-                    .replace("{max_blocks}", String.valueOf(upgLevel.maxBlocksPerIsland()));
 
-            lore.add(parsed.isEmpty()
-                    ? Component.empty().decoration(TextDecoration.ITALIC, false)
-                    : LEGACY.deserialize(parsed).decoration(TextDecoration.ITALIC, false));
+            String parsed = line
+                    .replace(
+                            "{level}",
+                            String.valueOf(level)
+                    )
+                    .replace(
+                            "{radius}",
+                            String.valueOf(upgLevel.radius())
+                    )
+                    .replace(
+                            "{interval}",
+                            String.valueOf(upgLevel.regenInterval())
+                    )
+                    .replace(
+                            "{max_blocks}",
+                            String.valueOf(upgLevel.maxBlocksPerIsland())
+                    );
+
+            Component loreComponent;
+
+            if (parsed.isEmpty()) {
+                loreComponent = Component.empty();
+            } else {
+                loreComponent = LEGACY.deserialize(parsed);
+            }
+
+            lore.add(noItalic(loreComponent));
         }
 
         meta.lore(lore);
 
         // ── Encantamiento (brillo) ────────────────────────────
-        boolean enchanted        = plugin.getConfig().getBoolean("item.enchanted", true);
-        boolean hideEnchantments = plugin.getConfig().getBoolean("item.hide-enchantments", true);
+        boolean enchanted =
+                plugin.getConfig().getBoolean(
+                        "item.enchanted",
+                        true
+                );
+
+        boolean hideEnchantments =
+                plugin.getConfig().getBoolean(
+                        "item.hide-enchantments",
+                        true
+                );
 
         if (enchanted) {
-            Enchantment unbreaking = Registry.ENCHANTMENT.get(NamespacedKey.minecraft("unbreaking"));
+            Enchantment unbreaking =
+                    Registry.ENCHANTMENT.get(
+                            NamespacedKey.minecraft("unbreaking")
+                    );
+
             if (unbreaking != null) {
-                meta.addEnchant(unbreaking, 1, true);
+                meta.addEnchant(
+                        unbreaking,
+                        1,
+                        true
+                );
             }
+
             if (hideEnchantments) {
-                meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+                meta.addItemFlags(
+                        ItemFlag.HIDE_ENCHANTS
+                );
             }
         }
 
         // ── PDC ──────────────────────────────────────────────
-        meta.getPersistentDataContainer().set(REGEN_KEY, PersistentDataType.BOOLEAN, true);
-        meta.getPersistentDataContainer().set(LEVEL_KEY, PersistentDataType.INTEGER, level);
+        meta.getPersistentDataContainer().set(
+                REGEN_KEY,
+                PersistentDataType.BOOLEAN,
+                true
+        );
+
+        meta.getPersistentDataContainer().set(
+                LEVEL_KEY,
+                PersistentDataType.INTEGER,
+                level
+        );
 
         item.setItemMeta(meta);
+
         return item;
     }
 
     public static boolean isRegeneratorItem(ItemStack item) {
-        if (item == null || !item.hasItemMeta()) return false;
-        if (REGEN_KEY == null) init(CropRegeneratorPlugin.getInstance());
-        return item.getItemMeta().getPersistentDataContainer()
-                .has(REGEN_KEY, PersistentDataType.BOOLEAN);
+        if (item == null || !item.hasItemMeta()) {
+            return false;
+        }
+
+        if (REGEN_KEY == null) {
+            init(CropRegeneratorPlugin.getInstance());
+        }
+
+        return item.getItemMeta()
+                .getPersistentDataContainer()
+                .has(
+                        REGEN_KEY,
+                        PersistentDataType.BOOLEAN
+                );
     }
 
     public static int getLevelFromItem(ItemStack item) {
-        if (!isRegeneratorItem(item)) return 1;
-        if (LEVEL_KEY == null) init(CropRegeneratorPlugin.getInstance());
-        Integer lvl = item.getItemMeta().getPersistentDataContainer()
-                .get(LEVEL_KEY, PersistentDataType.INTEGER);
+        if (!isRegeneratorItem(item)) {
+            return 1;
+        }
+
+        if (LEVEL_KEY == null) {
+            init(CropRegeneratorPlugin.getInstance());
+        }
+
+        Integer lvl = item.getItemMeta()
+                .getPersistentDataContainer()
+                .get(
+                        LEVEL_KEY,
+                        PersistentDataType.INTEGER
+                );
+
         return lvl != null ? lvl : 1;
     }
+}
+
+Qué cambié
+
+Antes tenías:
+
+LEGACY.deserialize(upgLevel.displayName())
+        .decoration(TextDecoration.ITALIC, false)
+
+Ahora pasa por:
+
+noItalic(LEGACY.deserialize(upgLevel.displayName()))
+
+Y el método:
+
+private static Component noItalic(Component component) {
+    return component
+            .decoration(TextDecoration.ITALIC, false)
+            .mapChildrenDeep(child ->
+                    child.decoration(TextDecoration.ITALIC, false));
 }
