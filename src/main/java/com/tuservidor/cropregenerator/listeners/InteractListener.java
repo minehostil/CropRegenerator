@@ -11,6 +11,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.EquipmentSlot;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -21,19 +22,39 @@ public class InteractListener implements Listener {
     private final CropRegeneratorPlugin plugin;
     private final UpgradeMenu menu;
     private final Map<UUID, Long> cooldowns = new HashMap<>();
-    public InteractListener(CropRegeneratorPlugin plugin, UpgradeMenu menu) { this.plugin=plugin; this.menu=menu; }
 
-    @EventHandler(priority=EventPriority.NORMAL, ignoreCancelled=true)
-    public void onInteract(PlayerInteractEvent event) {
-        if (event.getAction()!=Action.RIGHT_CLICK_BLOCK || event.getClickedBlock()==null) return;
-        RegeneratorBlock rb=plugin.getBlockDataManager().getBlock(event.getClickedBlock().getLocation());
-        if(rb==null)return;
-        event.setCancelled(true);
-        Player p=event.getPlayer();
-        if(!rb.getOwnerUUID().equals(p.getUniqueId())) { MessageUtil.send(p,"no-permission"); return; }
-        long cooldown=Math.max(0L, plugin.getConfig().getLong("interaction.cooldown",0L)*1000L);
-        if(cooldown>0){ long now=System.currentTimeMillis(), last=cooldowns.getOrDefault(p.getUniqueId(),0L); if(now-last<cooldown){long sec=(long)Math.ceil((cooldown-(now-last))/1000.0); MessageUtil.send(p,"cooldown-message","{seconds}",String.valueOf(sec)); return;} cooldowns.put(p.getUniqueId(),now); }
-        menu.open(p,rb);
+    public InteractListener(CropRegeneratorPlugin plugin, UpgradeMenu menu) {
+        this.plugin = plugin;
+        this.menu = menu;
     }
-    @EventHandler public void onQuit(org.bukkit.event.player.PlayerQuitEvent event){cooldowns.remove(event.getPlayer().getUniqueId());}
+
+    @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
+    public void onInteract(PlayerInteractEvent event) {
+        if (event.getAction() != Action.RIGHT_CLICK_BLOCK || event.getClickedBlock() == null) return;
+        // RIGHT_CLICK_BLOCK dispara dos veces (mano principal + offhand).
+        // Solo procesamos la mano principal para no abrir el menú dos veces.
+        if (event.getHand() != EquipmentSlot.HAND) return;
+
+        RegeneratorBlock rb = plugin.getBlockDataManager().getBlock(event.getClickedBlock().getLocation());
+        if (rb == null) return;
+        event.setCancelled(true);
+
+        Player p = event.getPlayer();
+        if (!rb.getOwnerUUID().equals(p.getUniqueId())) { MessageUtil.send(p, "no-permission"); return; }
+
+        long cooldown = Math.max(0L, plugin.getConfig().getLong("interaction.cooldown", 0L) * 1000L);
+        if (cooldown > 0) {
+            long now = System.currentTimeMillis(), last = cooldowns.getOrDefault(p.getUniqueId(), 0L);
+            if (now - last < cooldown) {
+                long sec = (long) Math.ceil((cooldown - (now - last)) / 1000.0);
+                MessageUtil.send(p, "cooldown-message", "{seconds}", String.valueOf(sec));
+                return;
+            }
+            cooldowns.put(p.getUniqueId(), now);
+        }
+        menu.open(p, rb);
+    }
+
+    @EventHandler
+    public void onQuit(org.bukkit.event.player.PlayerQuitEvent event) { cooldowns.remove(event.getPlayer().getUniqueId()); }
 }
