@@ -6,7 +6,7 @@
 
     <groupId>com.tuservidor</groupId>
     <artifactId>CropRegenerator</artifactId>
-    <version>1.0.0</version>
+    <version>2.0.0</version>
     <packaging>jar</packaging>
 
     <name>CropRegenerator</name>
@@ -28,6 +28,11 @@
         <repository>
             <id>bg-repo</id>
             <url>https://repo.bg-software.com/repository/api/</url>
+        </repository>
+        <!-- Vault API -->
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
         </repository>
         <!-- EngineHub (WorldEdit / FAWE) -->
         <repository>
@@ -63,6 +68,14 @@
             <groupId>com.bgsoftware</groupId>
             <artifactId>SuperiorSkyblockAPI</artifactId>
             <version>2024.2</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Vault API (opcional en runtime) -->
+        <dependency>
+            <groupId>com.github.MilkBowl</groupId>
+            <artifactId>VaultAPI</artifactId>
+            <version>1.7</version>
             <scope>provided</scope>
         </dependency>
 
