@@ -3,7 +3,7 @@ version: '${project.version}'
 main: com.tuservidor.cropregenerator.CropRegeneratorPlugin
 api-version: '1.21.11'
 description: Bloque regenerador de cultivos con soporte SuperiorSkyblock2, FAWE y Vault
-authors: [ TuNombre ]
+authors: [ MineHostil ]
 
 softdepend:
   - SuperiorSkyblock2
