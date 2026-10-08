@@ -52,119 +52,32 @@ public class ItemUtil {
 
     public static ItemStack createRegeneratorItem(int level) {
         CropRegeneratorPlugin plugin = CropRegeneratorPlugin.getInstance();
-
-        if (REGEN_KEY == null) {
-            init(plugin);
-        }
-
-        UpgradeManager.UpgradeLevel upgLevel =
-                plugin.getUpgradeManager().getLevel(level);
-
-        Material mat = Material.valueOf(
-                plugin.getConfig().getString(
-                        "block-material",
-                        "EMERALD_BLOCK"
-                )
-        );
-
+        if (REGEN_KEY == null) init(plugin);
+        Material mat;
+        try { mat = Material.valueOf(plugin.getConfig().getString("block-material", "EMERALD_BLOCK")); }
+        catch (IllegalArgumentException ex) { mat = Material.EMERALD_BLOCK; }
         ItemStack item = new ItemStack(mat);
         ItemMeta meta = item.getItemMeta();
-
-        // ── Nombre ───────────────────────────────────────────
-        Component displayName = LEGACY.deserialize(
-                upgLevel.displayName()
-        );
-
-        meta.displayName(noItalic(displayName));
-
-        // ── Lore desde config ────────────────────────────────
-        List<String> rawLines =
-                plugin.getConfig().getStringList("item.lore");
-
+        meta.displayName(noItalic(LEGACY.deserialize(plugin.getConfig().getString("item.name", "&aRegenerador de Cultivos"))));
         List<Component> lore = new ArrayList<>();
-
-        for (String line : rawLines) {
-
-            String parsed = line
-                    .replace(
-                            "{level}",
-                            String.valueOf(level)
-                    )
-                    .replace(
-                            "{radius}",
-                            String.valueOf(upgLevel.radius())
-                    )
-                    .replace(
-                            "{interval}",
-                            String.valueOf(upgLevel.regenInterval())
-                    )
-                    .replace(
-                            "{max_blocks}",
-                            String.valueOf(upgLevel.maxBlocksPerIsland())
-                    );
-
-            Component loreComponent;
-
-            if (parsed.isEmpty()) {
-                loreComponent = Component.empty();
-            } else {
-                loreComponent = LEGACY.deserialize(parsed);
-            }
-
-            lore.add(noItalic(loreComponent));
+        for (String line : plugin.getConfig().getStringList("item.lore")) {
+            String parsed = line.replace("{level}", String.valueOf(level))
+                    .replace("{time_level}", String.valueOf(level))
+                    .replace("{radius_level}", String.valueOf(level))
+                    .replace("{crops_level}", String.valueOf(level))
+                    .replace("{radius}", String.valueOf(plugin.getUpgradeManager().getRadius(level)))
+                    .replace("{interval}", String.valueOf(plugin.getUpgradeManager().getInterval(level)));
+            lore.add(noItalic(parsed.isEmpty() ? Component.empty() : LEGACY.deserialize(parsed)));
         }
-
         meta.lore(lore);
-
-        // ── Encantamiento (brillo) ────────────────────────────
-        boolean enchanted =
-                plugin.getConfig().getBoolean(
-                        "item.enchanted",
-                        true
-                );
-
-        boolean hideEnchantments =
-                plugin.getConfig().getBoolean(
-                        "item.hide-enchantments",
-                        true
-                );
-
-        if (enchanted) {
-            Enchantment unbreaking =
-                    Registry.ENCHANTMENT.get(
-                            NamespacedKey.minecraft("unbreaking")
-                    );
-
-            if (unbreaking != null) {
-                meta.addEnchant(
-                        unbreaking,
-                        1,
-                        true
-                );
-            }
-
-            if (hideEnchantments) {
-                meta.addItemFlags(
-                        ItemFlag.HIDE_ENCHANTS
-                );
-            }
+        if (plugin.getConfig().getBoolean("item.enchanted", true)) {
+            Enchantment unbreaking = Registry.ENCHANTMENT.get(NamespacedKey.minecraft("unbreaking"));
+            if (unbreaking != null) meta.addEnchant(unbreaking, 1, true);
+            if (plugin.getConfig().getBoolean("item.hide-enchantments", true)) meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
         }
-
-        // ── PDC ──────────────────────────────────────────────
-        meta.getPersistentDataContainer().set(
-                REGEN_KEY,
-                PersistentDataType.BOOLEAN,
-                true
-        );
-
-        meta.getPersistentDataContainer().set(
-                LEVEL_KEY,
-                PersistentDataType.INTEGER,
-                level
-        );
-
+        meta.getPersistentDataContainer().set(REGEN_KEY, PersistentDataType.BOOLEAN, true);
+        meta.getPersistentDataContainer().set(LEVEL_KEY, PersistentDataType.INTEGER, Math.max(1, level));
         item.setItemMeta(meta);
-
         return item;
     }
 
