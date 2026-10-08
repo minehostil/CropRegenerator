@@ -4,7 +4,6 @@ import com.tuservidor.cropregenerator.CropRegeneratorPlugin;
 import com.tuservidor.cropregenerator.model.RegeneratorBlock;
 import com.tuservidor.cropregenerator.util.ItemUtil;
 import com.tuservidor.cropregenerator.util.MessageUtil;
-import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -24,15 +23,18 @@ public class BlockListener implements Listener {
 
     // ── Colocar bloque ───────────────────────────────────────
 
-    @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
+    // HIGHEST: corre DESPUÉS de plugins de protección (WorldGuard, etc.) y con
+    // ignoreCancelled respetamos sus cancelaciones. Evita ghost blocks si otro
+    // plugin cancela el evento.
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onBlockPlace(BlockPlaceEvent event) {
         Player player = event.getPlayer();
         ItemStack item = event.getItemInHand();
 
         if (!ItemUtil.isRegeneratorItem(item)) return;
 
-        int itemLevel = ItemUtil.getLevelFromItem(item);
-        Block block   = event.getBlockPlaced();
+        int[] levels = ItemUtil.getLevelsFromItem(item); // {time, radius, crops}
+        Block block = event.getBlockPlaced();
 
         // ── Verificar isla (SuperiorSkyblock2) ────────────────
         if (plugin.hasSuperior()) {
@@ -52,14 +54,15 @@ public class BlockListener implements Listener {
                 return;
             }
 
-            // Registrar bloque
-            RegeneratorBlock rb = new RegeneratorBlock(block.getLocation(), player.getUniqueId(), itemLevel);
+            RegeneratorBlock rb = new RegeneratorBlock(block.getLocation(), player.getUniqueId(),
+                    levels[0], levels[1], levels[2], false, System.currentTimeMillis());
             plugin.getBlockDataManager().addBlock(rb, islandId);
             scheduleHologram(rb);
 
         } else {
             // Sin SSB2: sin límite de isla
-            RegeneratorBlock rb = new RegeneratorBlock(block.getLocation(), player.getUniqueId(), itemLevel);
+            RegeneratorBlock rb = new RegeneratorBlock(block.getLocation(), player.getUniqueId(),
+                    levels[0], levels[1], levels[2], false, System.currentTimeMillis());
             plugin.getBlockDataManager().addBlock(rb, null);
             scheduleHologram(rb);
         }
@@ -69,7 +72,7 @@ public class BlockListener implements Listener {
 
     // ── Romper bloque ────────────────────────────────────────
 
-    @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
         Block block = event.getBlock();
 
@@ -90,9 +93,9 @@ public class BlockListener implements Listener {
         plugin.getHologramManager().remove(rb);
         plugin.getBlockDataManager().removeBlock(rb);
 
-        // Devolver el ítem con el nivel correcto
+        // Devolver el ítem con los TRES niveles originales (no el máximo)
         event.setDropItems(false);
-        ItemStack drop = ItemUtil.createRegeneratorItem(rb.getLevel());
+        ItemStack drop = ItemUtil.createRegeneratorItem(rb.getTimeLevel(), rb.getRadiusLevel(), rb.getCropsLevel());
         block.getWorld().dropItemNaturally(block.getLocation(), drop);
 
         MessageUtil.send(player, "removed");
