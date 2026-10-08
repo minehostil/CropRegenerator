@@ -33,11 +33,14 @@ public class BlockDataManager {
         if (!dataFile.exists()) return;
 
         YamlConfiguration config = YamlConfiguration.loadConfiguration(dataFile);
+        int pendingWorld = 0;
         for (String key : config.getKeys(false)) {
             try {
                 String worldName = Objects.requireNonNull(config.getString(key + ".world"));
                 World world = Bukkit.getWorld(worldName);
-                if (world == null) continue;
+                // El mundo puede no estar cargado todavía (Multiverse carga mundos
+                // después de habilitar los plugins). El bloque se carga igual y queda
+                // "dormido" hasta que su chunk cargue (ChunkLoadListener + relinkWorld).
                 int x = config.getInt(key + ".x"), y = config.getInt(key + ".y"), z = config.getInt(key + ".z");
                 UUID owner = UUID.fromString(Objects.requireNonNull(config.getString(key + ".owner")));
                 int legacy = config.getInt(key + ".level", 1);
@@ -50,13 +53,20 @@ public class BlockDataManager {
 
                 RegeneratorBlock rb = new RegeneratorBlock(new Location(world, x, y, z), owner,
                         time, radius, crops, particles, next);
+                rb.setWorldName(worldName); // conserva el nombre aunque world == null
+                if (world == null) pendingWorld++;
                 String islandId = config.getString(key + ".islandId", "");
                 index(rb, islandId.isBlank() ? null : islandId);
             } catch (Exception e) {
                 plugin.getLogger().warning("Error al cargar bloque " + key + ": " + e.getMessage());
             }
         }
-        plugin.getLogger().info("Cargados " + blocksByKey.size() + " bloques regeneradores.");
+        if (pendingWorld > 0) {
+            plugin.getLogger().info("Cargados " + blocksByKey.size() + " bloques regeneradores ("
+                    + pendingWorld + " esperando la carga de su mundo).");
+        } else {
+            plugin.getLogger().info("Cargados " + blocksByKey.size() + " bloques regeneradores.");
+        }
     }
 
     public void saveAll() {
@@ -64,13 +74,9 @@ public class BlockDataManager {
         for (RegeneratorBlock rb : blocksByKey.values()) {
             String key = rb.getKey();
             Location loc = rb.getLocation();
-
-            if (loc.getWorld() == null) {
-                plugin.getLogger().warning("[Data] Bloque con mundo descargado, se omite: " + key);
-                continue;
-            }
-
-            config.set(key + ".world", loc.getWorld().getName());
+            // getWorldName() devuelve el nombre real si el mundo está cargado,
+            // o el nombre guardado si no — nunca se pierde el bloque.
+            config.set(key + ".world", rb.getWorldName());
             config.set(key + ".x", loc.getBlockX());
             config.set(key + ".y", loc.getBlockY());
             config.set(key + ".z", loc.getBlockZ());
@@ -98,8 +104,7 @@ public class BlockDataManager {
     private void index(RegeneratorBlock rb, String islandId) {
         String key = rb.getKey();
         blocksByKey.put(key, rb);
-        String chunkKey = chunkKey(rb.getLocation());
-        blocksByChunk.computeIfAbsent(chunkKey, k -> new HashSet<>()).add(key);
+        blocksByChunk.computeIfAbsent(chunkKeyOf(rb), k -> new HashSet<>()).add(key);
         if (islandId != null && !islandId.isBlank()) {
             blocksByIsland.computeIfAbsent(islandId, k -> new HashSet<>()).add(key);
             islandByBlockKey.put(key, islandId);
@@ -114,7 +119,7 @@ public class BlockDataManager {
             Set<String> set = blocksByIsland.get(island);
             if (set != null) { set.remove(key); if (set.isEmpty()) blocksByIsland.remove(island); }
         }
-        String chunk = chunkKey(rb.getLocation());
+        String chunk = chunkKeyOf(rb);
         Set<String> set = blocksByChunk.get(chunk);
         if (set != null) { set.remove(key); if (set.isEmpty()) blocksByChunk.remove(chunk); }
     }
@@ -144,7 +149,12 @@ public class BlockDataManager {
         Set<String> keys = blocksByChunk.get(chunk.getWorld().getName() + "," + chunk.getX() + "," + chunk.getZ());
         if (keys == null || keys.isEmpty()) return List.of();
         List<RegeneratorBlock> result = new ArrayList<>(keys.size());
-        for (String key : keys) { RegeneratorBlock rb = blocksByKey.get(key); if (rb != null) result.add(rb); }
+        for (String key : keys) {
+            RegeneratorBlock rb = blocksByKey.get(key);
+            if (rb == null) continue;
+            rb.relinkWorld(chunk.getWorld()); // despierta bloques cuyo mundo no estaba cargado
+            result.add(rb);
+        }
         return result;
     }
 
@@ -167,7 +177,8 @@ public class BlockDataManager {
     public String getIslandIdForBlock(RegeneratorBlock rb) { return islandByBlockKey.get(rb.getKey()); }
     public String getIslandIdForKey(String key) { return islandByBlockKey.get(key); }
 
-    private String chunkKey(Location loc) {
-        return loc.getWorld().getName() + "," + (loc.getBlockX() >> 4) + "," + (loc.getBlockZ() >> 4);
+    /** Clave de chunk por nombre de mundo — funciona aunque el mundo no esté cargado. */
+    private String chunkKeyOf(RegeneratorBlock rb) {
+        return rb.getWorldName() + "," + (rb.getLocation().getBlockX() >> 4) + "," + (rb.getLocation().getBlockZ() >> 4);
     }
 }
