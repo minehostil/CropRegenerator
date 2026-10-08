@@ -15,14 +15,23 @@ import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.inventory.ItemStack;
 
 public class UpgradeMenuListener implements Listener {
-    private final CropRegeneratorPlugin plugin; private final UpgradeMenu menu;
-    public UpgradeMenuListener(CropRegeneratorPlugin plugin, UpgradeMenu menu) { this.plugin = plugin; this.menu = menu; }
+    private final CropRegeneratorPlugin plugin;
+    private final UpgradeMenu menu;
+
+    public UpgradeMenuListener(CropRegeneratorPlugin plugin, UpgradeMenu menu) {
+        this.plugin = plugin;
+        this.menu = menu;
+    }
+
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
     public void onClick(InventoryClickEvent event) {
         if (!(event.getInventory().getHolder() instanceof UpgradeMenu.Holder holder)) return;
-        event.setCancelled(true); if (!(event.getWhoClicked() instanceof Player player)) return;
+        event.setCancelled(true);
+        if (!(event.getWhoClicked() instanceof Player player)) return;
+
         RegeneratorBlock rb = find(holder.blockKey());
         if (rb == null || !rb.getOwnerUUID().equals(player.getUniqueId())) { player.closeInventory(); return; }
+
         String action = holder.action(event.getRawSlot());
         switch (action) {
             case "UPGRADE_TIME" -> upgrade(player, rb, UpgradeManager.Tree.TIME);
@@ -32,11 +41,13 @@ public class UpgradeMenuListener implements Listener {
                 rb.setParticlesEnabled(!rb.isParticlesEnabled());
                 MessageUtil.send(player, "particles-toggled", "{state}",
                         rb.isParticlesEnabled() ? "activadas" : "desactivadas");
+                plugin.getBlockDataManager().saveAll();
                 menu.open(player, rb);
             }
             default -> { }
         }
     }
+
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
     public void onDrag(InventoryDragEvent event) {
         if (event.getInventory().getHolder() instanceof UpgradeMenu.Holder) event.setCancelled(true);
@@ -50,9 +61,11 @@ public class UpgradeMenuListener implements Listener {
         switch (tree) { case TIME -> rb.setTimeLevel(next.level()); case RADIUS -> rb.setRadiusLevel(next.level()); case CROPS -> rb.setCropsLevel(next.level()); }
         if (tree == UpgradeManager.Tree.TIME) rb.setNextRegenTimestamp(System.currentTimeMillis() + next.interval() * 1000L);
         plugin.getHologramManager().spawnOrUpdate(rb);
+        plugin.getBlockDataManager().saveAll();
         MessageUtil.send(player, "upgrade-success", "{tree}", treeName(tree), "{level}", String.valueOf(next.level()));
         menu.open(player, rb);
     }
+
     private boolean pay(Player player, UpgradeManager.UpgradeCost cost) {
         switch (cost.type()) {
             case NONE -> { return true; }
@@ -62,8 +75,12 @@ public class UpgradeMenuListener implements Listener {
         }
         return false;
     }
-    private int count(Player p, Material m) { int n=0; for(ItemStack i:p.getInventory().getStorageContents()) if(i!=null&&i.getType()==m)n+=i.getAmount(); return n; }
-    private void remove(Player p, Material m, int amount) { int rem=amount; ItemStack[] a=p.getInventory().getStorageContents(); for(int i=0;i<a.length&&rem>0;i++){ItemStack x=a[i]; if(x==null||x.getType()!=m)continue; int take=Math.min(rem,x.getAmount()); x.setAmount(x.getAmount()-take); rem-=take; a[i]=x.getAmount()==0?null:x;} p.getInventory().setStorageContents(a); }
-    private RegeneratorBlock find(String key) { for(RegeneratorBlock rb:plugin.getBlockDataManager().getAllBlocks()) if(rb.getKey().equals(key)) return rb; return null; }
-    private String treeName(UpgradeManager.Tree t) { return switch(t){case TIME->"Tiempo";case RADIUS->"Radio";case CROPS->"Cultivos";}; }
+
+    private int count(Player p, Material m) { int n = 0; for (ItemStack i : p.getInventory().getStorageContents()) if (i != null && i.getType() == m) n += i.getAmount(); return n; }
+    private void remove(Player p, Material m, int amount) { int rem = amount; ItemStack[] a = p.getInventory().getStorageContents(); for (int i = 0; i < a.length && rem > 0; i++) { ItemStack x = a[i]; if (x == null || x.getType() != m) continue; int take = Math.min(rem, x.getAmount()); x.setAmount(x.getAmount() - take); rem -= take; a[i] = x.getAmount() == 0 ? null : x; } p.getInventory().setStorageContents(a); }
+
+    // O(1): acceso directo al índice en vez de recorrer todos los bloques
+    private RegeneratorBlock find(String key) { return plugin.getBlockDataManager().getBlockByKey(key); }
+
+    private String treeName(UpgradeManager.Tree t) { return switch (t) { case TIME -> "Tiempo"; case RADIUS -> "Radio"; case CROPS -> "Cultivos"; }; }
 }
