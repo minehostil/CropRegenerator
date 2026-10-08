@@ -2,7 +2,6 @@ package com.tuservidor.cropregenerator;
 
 import com.tuservidor.cropregenerator.commands.CropBlockCommand;
 import com.tuservidor.cropregenerator.data.BlockDataManager;
-import com.tuservidor.cropregenerator.hooks.FAWEHook;
 import com.tuservidor.cropregenerator.hooks.SuperiorSkyblockHook;
 import com.tuservidor.cropregenerator.hooks.VaultHook;
 import com.tuservidor.cropregenerator.managers.ParticleManager;
