@@ -165,7 +165,6 @@ public class NativeHologramProvider {
      * dinámica para reemplazar solo el número cada tick.
      */
     private void buildStaticCache(RegeneratorBlock rb) {
-        var upgradeLevel = plugin.getUpgradeManager().getLevel(rb.getLevel());
         List<String> lines = plugin.getConfig().getStringList("hologram.lines");
 
         TextComponent.Builder staticBuilder = Component.text();
@@ -175,9 +174,12 @@ public class NativeHologramProvider {
         for (String line : lines) {
             // Reemplazar placeholders estáticos
             String resolved = line
-                    .replace("{level}",    String.valueOf(rb.getLevel()))
-                    .replace("{radius}",   String.valueOf(upgradeLevel.radius()))
-                    .replace("{interval}", String.valueOf(upgradeLevel.regenInterval()));
+                    .replace("{level}", String.valueOf(rb.getLevel()))
+                    .replace("{time_level}", String.valueOf(rb.getTimeLevel()))
+                    .replace("{radius_level}", String.valueOf(rb.getRadiusLevel()))
+                    .replace("{crops_level}", String.valueOf(rb.getCropsLevel()))
+                    .replace("{radius}", String.valueOf(plugin.getUpgradeManager().getRadius(rb.getRadiusLevel())))
+                    .replace("{interval}", String.valueOf(plugin.getUpgradeManager().getInterval(rb.getTimeLevel())))
 
             if (resolved.contains(DYNAMIC_TAG)) {
                 // Guardar plantilla dinámica con {next_regen} intacto
