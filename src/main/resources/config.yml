@@ -1,18 +1,7 @@
-# ╔══════════════════════════════════════════╗
-# ║         CropRegenerator Config           ║
-# ╚══════════════════════════════════════════╝
-
-# Material del bloque regenerador (debe ser un bloque válido de Minecraft)
 block-material: EMERALD_BLOCK
-
-# Mostrar en consola los cultivos activos al iniciar el servidor
 debug-crops: false
+persist-data: true
 
-# ──────────────────────────────────────────
-# CULTIVOS
-# Define qué cultivos serán afectados por la regeneración.
-# true = activo, false = ignorado
-# ──────────────────────────────────────────
 crops:
   wheat: true
   carrots: true
@@ -26,121 +15,132 @@ crops:
   pitcher_crop: true
   torchflower_crop: true
 
-# ¿Guardar bloques entre reinicios del servidor?
-persist-data: true
+limits:
+  max-blocks-per-island: 5
 
-# ──────────────────────────────────────────
-# NIVELES DE MEJORA
-# Cada nivel define: radio de efecto, intervalo de regeneración (en segundos)
-# y límite de bloques por isla (requiere SuperiorSkyblock2)
-# ──────────────────────────────────────────
-upgrades:
-  1:
-    radius: 5
-    regen-interval: 60       # segundos
-    max-blocks-per-island: 1
-    display-name: "&aRegenerador de Cultivos &7[Nivel 1]"
-  2:
-    radius: 8
-    regen-interval: 45
-    max-blocks-per-island: 2
-    display-name: "&aRegenerador de Cultivos &e[Nivel 2]"
-  3:
-    radius: 12
-    regen-interval: 30
-    max-blocks-per-island: 3
-    display-name: "&aRegenerador de Cultivos &6[Nivel 3]"
-  4:
-    radius: 16
-    regen-interval: 20
-    max-blocks-per-island: 4
-    display-name: "&aRegenerador de Cultivos &c[Nivel 4]"
-  5:
-    radius: 20
-    regen-interval: 10
-    max-blocks-per-island: 5
-    display-name: "&aRegenerador de Cultivos &d[Nivel MAX]"
-
-# ──────────────────────────────────────────
-# HOLOGRAMA (Display Entity)
-# ──────────────────────────────────────────
 hologram:
-  # Offset Y sobre el bloque
   offset-y: 1.5
-  # Actualizar el countdown ({next_regen}) en tiempo real
-  # false = el holograma nunca se actualiza (mejor rendimiento)
   update-countdown: true
-  # Cada cuántos segundos se actualiza el countdown (mínimo 1)
-  # Solo aplica si update-countdown: true
   update-interval: 1
-  # Escala del texto
   scale: 1.0
-  # Líneas del holograma — placeholders disponibles:
-  # {level} {radius} {interval} {owner} {next_regen}
-  # Soporta & codes (&a, &l, &r, etc.) y hex (&#RRGGBB)
   lines:
     - "&a&l✦ Regenerador ✦"
-    - "&7Área: &a{radius} bloques"
-    - "&7Recarga: &e{interval}s"
+    - "&7Tiempo: &b{time_level} &8| &7Radio: &a{radius}"
+    - "&7Cultivos: &e{crops_level}"
     - "&8⏳ Próx: &f{next_regen}s"
 
-# ──────────────────────────────────────────
-# MENSAJES
-# ──────────────────────────────────────────
-messages:
-  prefix: "<dark_green>[<green>CropRegen<dark_green>] "
-  placed: "<green>Bloque regenerador colocado correctamente."
-  removed: "<red>Bloque regenerador eliminado."
-  limit-reached: "<red>Has alcanzado el límite de bloques para tu isla (<white>{max}<red>)."
-  upgrade-success: "<green>Bloque mejorado al nivel <yellow>{level}<green>."
-  upgrade-max: "<yellow>Este bloque ya está en el nivel máximo."
-  not-your-island: "<red>Solo puedes colocar este bloque en tu isla."
-  no-permission: "<red>No tienes permisos para hacer esto."
-  regen-tick: "<green>✔ Cultivos regenerados en el área."
-  item-given: "<green>Se dio el bloque de nivel <yellow>{level} <green>a <white>{player}<green>."
-  no-player: "<red>Jugador no encontrado."
-  invalid-level: "<red>Nivel inválido. Usa un nivel entre 1 y {max}."
-
-# ──────────────────────────────────────────
-# INTERACCIÓN (clic derecho sobre el bloque)
-# ──────────────────────────────────────────
-interaction:
-  # ¿Activar la ejecución de comandos al hacer clic derecho?
+particles:
   enabled: true
-  # Cooldown en segundos entre usos (0 = sin cooldown)
-  cooldown: 3
-  # Comandos a ejecutar como el jugador. Usa {player} como placeholder.
-  # No incluyas la barra "/" al inicio.
-  commands:
-    - "is menu"
-  # Mensaje al ejecutar (déjalo vacío "" para no mostrar nada)
-  message: "<green>¡Comandos ejecutados!"
-  # Mensaje de cooldown — placeholder: {seconds}
-  cooldown-message: "<red>Espera <yellow>{seconds}s <red>antes de volver a usar esto."
+  interval-ticks: 10
+  type: END_ROD
+  radius: 0.8
+  points: 24
 
-# ──────────────────────────────────────────
-# ÍTEM (lore del bloque regenerador)
-# Placeholders disponibles:
-#   {level}      → Nivel del bloque
-#   {radius}     → Radio de efecto
-#   {interval}   → Intervalo de regeneración en segundos
-#   {max_blocks} → Máximo de bloques por isla
-# Puedes agregar o quitar las líneas que quieras.
-# Usa "" para una línea vacía.
-# ──────────────────────────────────────────
+menu:
+  # Tamaño del inventario: 1-6 filas.
+  rows: 1
+  title: "&8Mejoras del Regenerador"
+
+  # Cada elemento es completamente configurable.
+  # action: UPGRADE_TIME, UPGRADE_RADIUS, UPGRADE_CROPS, TOGGLE_PARTICLES o NONE
+  # Placeholders disponibles para mejoras:
+  # {level}, {max_level}, {next_level}, {cost}
+  # {current_interval}, {next_interval}
+  # {current_radius}, {next_radius}
+  # {current_crops}, {next_crops}
+  # {particles_state}
+  items:
+    time:
+      slot: 1
+      action: UPGRADE_TIME
+      material: CLOCK
+      name: "&b&lMejora de Tiempo"
+      lore:
+        - "&8&m────────────────────"
+        - "&7Nivel actual: &f{level}&8/&f{max_level}"
+        - "&7Intervalo: &f{current_interval}s &8→ &a{next_interval}s"
+        - "&7Costo: &e{cost}"
+        - ""
+        - "&e▸ Clic para mejorar"
+        - "&8&m────────────────────"
+
+    radius:
+      slot: 3
+      action: UPGRADE_RADIUS
+      material: COMPASS
+      name: "&a&lMejora de Radio"
+      lore:
+        - "&8&m────────────────────"
+        - "&7Nivel actual: &f{level}&8/&f{max_level}"
+        - "&7Radio: &f{current_radius} &8→ &a{next_radius}"
+        - "&7Costo: &e{cost}"
+        - ""
+        - "&e▸ Clic para mejorar"
+        - "&8&m────────────────────"
+
+    crops:
+      slot: 5
+      action: UPGRADE_CROPS
+      material: WHEAT
+      name: "&e&lMejora de Cultivos"
+      lore:
+        - "&8&m────────────────────"
+        - "&7Nivel actual: &f{level}&8/&f{max_level}"
+        - "&7Cultivos en este tier: &f{next_crops}"
+        - "&7Costo: &e{cost}"
+        - ""
+        - "&e▸ Clic para mejorar"
+        - "&8&m────────────────────"
+
+    particles:
+      slot: 7
+      action: TOGGLE_PARTICLES
+      material: END_ROD
+      name: "&d&lPartículas: &f{particles_state}"
+      lore:
+        - "&7Anillo horizontal alrededor del bloque."
+        - ""
+        - "&e▸ Clic para alternar"
+
+  # Rellena los espacios vacíos. Puedes desactivarlo.
+  filler:
+    enabled: false
+    material: BLACK_STAINED_GLASS_PANE
+    name: " "
+    lore: []
+
+messages:
+  prefix: "&8[&aCropRegen&8] &r"
+  placed: "&aBloque regenerador colocado correctamente."
+  removed: "&cBloque regenerador eliminado."
+  limit-reached: "&cHas alcanzado el límite de bloques para tu isla (&f{max}&c)."
+  upgrade-success: "&aMejora de &e{tree} &acompletada. Nivel &e{level}&a."
+  upgrade-max: "&eEsta mejora ya está en el nivel máximo."
+  not-your-island: "&cSolo puedes colocar este bloque en tu isla."
+  no-permission: "&cSolo el dueño puede administrar este regenerador."
+  particles-toggled: "&aPartículas &e{state}&a."
+  vault-unavailable: "&cVault/Economy no está disponible."
+  not-enough-money: "&cNo tienes suficiente dinero. Necesitas &e{cost}&c."
+  not-enough-xp: "&cNo tienes suficiente XP. Necesitas &e{cost}&c XP."
+  not-enough-items: "&cNo tienes los objetos necesarios. Necesitas &e{cost}&c."
+  payment-error: "&cNo se pudo completar el pago."
+  item-given: "&aSe dio el bloque de nivel &e{level} &aa &f{player}&a."
+  no-player: "&cJugador no encontrado."
+  invalid-level: "&cNivel inválido. Usa un nivel entre 1 y {max}."
+  cooldown-message: "&cEspera &e{seconds}s &cantes de volver a usar esto."
+
+interaction:
+  cooldown: 0
+
 item:
-  # Soporta & codes (&a, &l, etc.) y hex (&#RRGGBB)
-  # Usa &r al inicio de cada línea para evitar que aparezca en cursiva
+  name: "&aRegenerador de Cultivos"
   lore:
     - "&r&8──────────────────"
-    - "&r&7Nivel: &e{level}"
+    - "&r&7Nivel inicial: &e{level}"
     - "&r&7Radio: &a{radius} bloques"
     - "&r&7Intervalo: &e{interval}s"
-    - "&r&7Máx/isla: &b{max_blocks}"
     - ""
     - "&r&8Coloca este bloque en tu isla"
     - "&r&8──────────────────"
-  # ¿Aplicar brillo de encantamiento al ítem?
   enchanted: true
-  # ¿Ocultar los encantamientos del lore? (solo aplica si enchanted: true)
   hide-enchantments: true

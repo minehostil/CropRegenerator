@@ -2,17 +2,18 @@ name: CropRegenerator
 version: '${project.version}'
 main: com.tuservidor.cropregenerator.CropRegeneratorPlugin
 api-version: '1.21.11'
-description: Bloque regenerador de cultivos con soporte SuperiorSkyblock2 y FAWE
+description: Bloque regenerador de cultivos con soporte SuperiorSkyblock2, FAWE y Vault
 authors: [ TuNombre ]
 
 softdepend:
   - SuperiorSkyblock2
   - FastAsyncWorldEdit
+  - Vault
 
 commands:
   cropblock:
     description: Comandos del plugin CropRegenerator
-    usage: /cropblock <help|give|upgradeblock|info>
+    usage: /cropblock <help|give|upgradeblock|info|reload>
     aliases: [ cb ]
 
 permissions:
@@ -20,5 +21,5 @@ permissions:
     description: Permite dar bloques regeneradores a jugadores
     default: op
   cropregenerator.admin:
-    description: Acceso a upgradeblock y acciones administrativas
+    description: Acceso a acciones administrativas
     default: op

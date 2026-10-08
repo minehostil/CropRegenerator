@@ -1,0 +1,102 @@
+# Mejoras independientes por bloque.
+# Los costes se pagan al subir al tier indicado.
+# type: NONE, MONEY (Vault), XP o ITEMS.
+
+time:
+  1:
+    interval: 60
+    cost:
+      type: NONE
+      amount: 0
+  2:
+    interval: 45
+    cost:
+      type: MONEY
+      amount: 10000
+  3:
+    interval: 30
+    cost:
+      type: MONEY
+      amount: 25000
+  4:
+    interval: 20
+    cost:
+      type: XP
+      amount: 500
+  5:
+    interval: 10
+    cost:
+      type: ITEMS
+      amount: 16
+      item: DIAMOND
+      item-display: "Diamantes"
+
+radius:
+  1:
+    radius: 5
+    cost:
+      type: NONE
+      amount: 0
+  2:
+    radius: 8
+    cost:
+      type: MONEY
+      amount: 15000
+  3:
+    radius: 12
+    cost:
+      type: MONEY
+      amount: 35000
+  4:
+    radius: 16
+    cost:
+      type: XP
+      amount: 750
+  5:
+    radius: 20
+    cost:
+      type: ITEMS
+      amount: 24
+      item: EMERALD
+      item-display: "Esmeraldas"
+
+crops:
+  # Los cultivos de tiers anteriores permanecen desbloqueados.
+  1:
+    crops:
+      - wheat
+      - carrots
+      - potatoes
+    cost:
+      type: NONE
+      amount: 0
+  2:
+    crops:
+      - beetroots
+      - nether_wart
+    cost:
+      type: MONEY
+      amount: 12000
+  3:
+    crops:
+      - cocoa
+      - melon_stem
+      - pumpkin_stem
+    cost:
+      type: MONEY
+      amount: 30000
+  4:
+    crops:
+      - sweet_berry_bush
+      - pitcher_crop
+    cost:
+      type: XP
+      amount: 600
+  5:
+    crops:
+      - torchflower_crop
+    cost:
+      type: ITEMS
+      amount: 12
+      item: GOLD_INGOT
+      item-display: "Lingotes de oro"
