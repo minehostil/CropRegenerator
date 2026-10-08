@@ -72,8 +72,6 @@ public class BlockDataManager {
 
             config.set(key + ".world", loc.getWorld().getName());
             // ... el resto del método queda igual
-            String key = rb.getKey();
-            Location loc = rb.getLocation();
             config.set(key + ".world", loc.getWorld().getName());
             config.set(key + ".x", loc.getBlockX());
             config.set(key + ".y", loc.getBlockY());
