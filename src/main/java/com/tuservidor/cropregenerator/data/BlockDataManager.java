@@ -60,12 +60,12 @@ public class BlockDataManager {
     }
 
     public void saveAll() {
-    YamlConfiguration config = new YamlConfiguration();
-    for (RegeneratorBlock rb : blocksByKey.values()) {
-        String key = rb.getKey();
-        Location loc = rb.getLocation();
+        YamlConfiguration config = new YamlConfiguration();
+        for (RegeneratorBlock rb : blocksByKey.values()) {
+            String key = rb.getKey();
+            Location loc = rb.getLocation();
 
-        if (loc.getWorld() == null) {
+            if (loc.getWorld() == null) {
             plugin.getLogger().warning("[Data] Bloque con mundo descargado, se omite: " + key);
             continue;
         }
