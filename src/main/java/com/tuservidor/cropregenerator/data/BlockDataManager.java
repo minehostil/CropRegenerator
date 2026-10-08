@@ -66,11 +66,10 @@ public class BlockDataManager {
             Location loc = rb.getLocation();
 
             if (loc.getWorld() == null) {
-            plugin.getLogger().warning("[Data] Bloque con mundo descargado, se omite: " + key);
-            continue;
+                plugin.getLogger().warning("[Data] Bloque con mundo descargado, se omite: " + key);
+                continue;
             }
 
-            // ... el resto del método queda igual
             config.set(key + ".world", loc.getWorld().getName());
             config.set(key + ".x", loc.getBlockX());
             config.set(key + ".y", loc.getBlockY());
@@ -123,6 +122,11 @@ public class BlockDataManager {
     public RegeneratorBlock getBlock(Location loc) {
         if (loc.getWorld() == null) return null;
         return blocksByKey.get(loc.getWorld().getName() + "," + loc.getBlockX() + "," + loc.getBlockY() + "," + loc.getBlockZ());
+    }
+
+    /** Acceso O(1) por clave (usado por el menú de mejoras). */
+    public RegeneratorBlock getBlockByKey(String key) {
+        return blocksByKey.get(key);
     }
 
     public boolean isRegeneratorBlock(Location loc) { return getBlock(loc) != null; }
