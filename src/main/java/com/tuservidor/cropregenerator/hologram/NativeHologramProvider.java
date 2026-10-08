@@ -179,7 +179,7 @@ public class NativeHologramProvider {
                     .replace("{radius_level}", String.valueOf(rb.getRadiusLevel()))
                     .replace("{crops_level}", String.valueOf(rb.getCropsLevel()))
                     .replace("{radius}", String.valueOf(plugin.getUpgradeManager().getRadius(rb.getRadiusLevel())))
-                    .replace("{interval}", String.valueOf(plugin.getUpgradeManager().getInterval(rb.getTimeLevel())))
+                    .replace("{interval}", String.valueOf(plugin.getUpgradeManager().getInterval(rb.getTimeLevel())));
 
             if (resolved.contains(DYNAMIC_TAG)) {
                 // Guardar plantilla dinámica con {next_regen} intacto
