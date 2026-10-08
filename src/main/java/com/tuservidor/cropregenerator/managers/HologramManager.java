@@ -12,9 +12,16 @@ public class HologramManager {
     private final NativeHologramProvider provider;
 
     public HologramManager(CropRegeneratorPlugin plugin) {
-        this.provider = new NativeHologramProvider(plugin);
-        plugin.getLogger().info("[HologramManager] Proveedor: Native (TextDisplay)");
+    NativeHologramProvider p;
+    try {
+        p = new NativeHologramProvider(plugin);
+    } catch (NoClassDefFoundError | NoSuchMethodError e) {
+        throw new IllegalStateException(
+            "CropRegenerator requiere Paper 1.19.4+ (TextDisplay no disponible en esta versión)", e);
     }
+    this.provider = p;
+    plugin.getLogger().info("[HologramManager] Proveedor: Native (TextDisplay)");
+}
 
     public void spawnOrUpdate(RegeneratorBlock rb) { provider.spawnOrUpdate(rb); }
     public void updateText(RegeneratorBlock rb)    { provider.updateText(rb); }
