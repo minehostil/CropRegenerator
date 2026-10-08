@@ -25,15 +25,8 @@ public class ChunkLoadListener implements Listener {
         // Respawnear hologramas de bloques en este chunk
         // runTask asegura que el chunk esté completamente inicializado
         plugin.getServer().getScheduler().runTask(plugin, () -> {
-            for (RegeneratorBlock rb : plugin.getBlockDataManager().getAllBlocks()) {
-                if (rb.getLocation().getWorld() == null) continue;
-                if (!rb.getLocation().getWorld().equals(chunk.getWorld())) continue;
-                if ((rb.getLocation().getBlockX() >> 4) != chunk.getX()) continue;
-                if ((rb.getLocation().getBlockZ() >> 4) != chunk.getZ()) continue;
-
-                // Respawnear — spawnOrUpdate limpia el anterior si existe
+            for (RegeneratorBlock rb : plugin.getBlockDataManager().getBlocksInChunk(chunk)) {
                 plugin.getHologramManager().spawnOrUpdate(rb);
-            }
-        });
+            }        });
     }
 }

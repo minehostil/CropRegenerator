@@ -44,7 +44,7 @@ public class BlockListener implements Listener {
 
             String islandId = plugin.getSuperiorHook().getIslandIdAt(block.getLocation());
             int current     = plugin.getBlockDataManager().countBlocksForIsland(islandId);
-            int max         = plugin.getUpgradeManager().getLevel(itemLevel).maxBlocksPerIsland();
+            int max         = plugin.getConfig().getInt("limits.max-blocks-per-island", 5);
 
             if (current >= max) {
                 MessageUtil.send(player, "limit-reached", "{max}", String.valueOf(max));
