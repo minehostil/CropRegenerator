@@ -52,6 +52,6 @@ public class SuperiorSkyblockHook {
 
     /** Cuántos bloques regeneradores puede tener la isla según el nivel del upgrade. */
     public int getMaxBlocks(Player player, int upgradeLevel) {
-        return plugin.getUpgradeManager().getLevel(upgradeLevel).maxBlocksPerIsland();
+        return plugin.getConfig().getInt("limits.max-blocks-per-island", 5);
     }
 }
