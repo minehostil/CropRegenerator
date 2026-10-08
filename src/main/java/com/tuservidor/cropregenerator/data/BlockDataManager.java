@@ -68,7 +68,7 @@ public class BlockDataManager {
             if (loc.getWorld() == null) {
             plugin.getLogger().warning("[Data] Bloque con mundo descargado, se omite: " + key);
             continue;
-        }
+            }
 
             config.set(key + ".world", loc.getWorld().getName());
             // ... el resto del método queda igual
