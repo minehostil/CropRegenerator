@@ -4,6 +4,10 @@ import com.tuservidor.cropregenerator.commands.CropBlockCommand;
 import com.tuservidor.cropregenerator.data.BlockDataManager;
 import com.tuservidor.cropregenerator.hooks.FAWEHook;
 import com.tuservidor.cropregenerator.hooks.SuperiorSkyblockHook;
+import com.tuservidor.cropregenerator.hooks.VaultHook;
+import com.tuservidor.cropregenerator.managers.ParticleManager;
+import com.tuservidor.cropregenerator.menu.UpgradeMenu;
+import com.tuservidor.cropregenerator.listeners.UpgradeMenuListener;
 import com.tuservidor.cropregenerator.listeners.BlockListener;
 import com.tuservidor.cropregenerator.listeners.ChunkLoadListener;
 import com.tuservidor.cropregenerator.listeners.PlayerConnectionListener;
@@ -23,18 +27,27 @@ public class CropRegeneratorPlugin extends JavaPlugin {
     private RegeneratorManager regeneratorManager;
     private UpgradeManager upgradeManager;
     private SuperiorSkyblockHook superiorHook;
+    private VaultHook vaultHook;
+    private ParticleManager particleManager;
+    private UpgradeMenu upgradeMenu;
 
     @Override
     public void onEnable() {
         instance = this;
 
         saveDefaultConfig();
+        if (!new java.io.File(getDataFolder(), "upgrades.yml").exists()) saveResource("upgrades.yml", false);
 
         // Managers
         this.upgradeManager    = new UpgradeManager(this);
         this.blockDataManager  = new BlockDataManager(this);
         this.hologramManager   = new HologramManager(this);
         this.regeneratorManager = new RegeneratorManager(this);
+        this.vaultHook = new VaultHook(this);
+        if (vaultHook.isAvailable()) getLogger().info("Vault detectado — costes MONEY activados.");
+        else getLogger().warning("Vault/Economy no encontrado — costes MONEY no disponibles.");
+        this.particleManager = new ParticleManager(this);
+        this.upgradeMenu = new UpgradeMenu(this);
 
         // Hook opcional de SuperiorSkyblock2
         if (getServer().getPluginManager().getPlugin("SuperiorSkyblock2") != null) {
@@ -48,7 +61,8 @@ public class CropRegeneratorPlugin extends JavaPlugin {
 
         // Listeners y comandos
         getServer().getPluginManager().registerEvents(new BlockListener(this), this);
-        getServer().getPluginManager().registerEvents(new InteractListener(this), this);
+        getServer().getPluginManager().registerEvents(new InteractListener(this, upgradeMenu), this);
+        getServer().getPluginManager().registerEvents(new UpgradeMenuListener(this, upgradeMenu), this);
         getServer().getPluginManager().registerEvents(new ChunkLoadListener(this), this);
         getServer().getPluginManager().registerEvents(new PlayerConnectionListener(this), this);
 
@@ -56,8 +70,11 @@ public class CropRegeneratorPlugin extends JavaPlugin {
         getCommand("cropblock").setExecutor(cmd);
         getCommand("cropblock").setTabCompleter(cmd);
 
+        particleManager.start();
+
         // Cargar datos persistentes y restaurar hologramas
         blockDataManager.loadAll();
+        blockDataManager.spawnHologramsInLoadedChunks();
         // Solo iniciar el task si hay jugadores conectados (evita consumo en servidor vacío)
         if (!getServer().getOnlinePlayers().isEmpty()) {
             regeneratorManager.startAll();
@@ -69,6 +86,7 @@ public class CropRegeneratorPlugin extends JavaPlugin {
     @Override
     public void onDisable() {
         if (regeneratorManager != null) regeneratorManager.stopAll();
+        if (particleManager != null) particleManager.stop();
         if (hologramManager    != null) hologramManager.removeAll();
         if (blockDataManager   != null) blockDataManager.saveAll();
         getLogger().info("CropRegenerator deshabilitado.");
@@ -82,4 +100,7 @@ public class CropRegeneratorPlugin extends JavaPlugin {
     public UpgradeManager   getUpgradeManager()       { return upgradeManager; }
     public SuperiorSkyblockHook getSuperiorHook()     { return superiorHook; }
     public boolean hasSuperior()                      { return superiorHook != null; }
+    public VaultHook getVaultHook() { return vaultHook; }
+    public ParticleManager getParticleManager() { return particleManager; }
+    public UpgradeMenu getUpgradeMenu() { return upgradeMenu; }
 }
