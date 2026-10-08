@@ -1,6 +1,7 @@
 package com.tuservidor.cropregenerator.model;
 
 import org.bukkit.Location;
+import org.bukkit.World;
 
 import java.util.UUID;
 
@@ -8,6 +9,7 @@ import java.util.UUID;
 public class RegeneratorBlock {
     private final Location location;
     private final UUID ownerUUID;
+    private String worldName; // fallback: nombre del mundo aunque no esté cargado
     private int timeLevel;
     private int radiusLevel;
     private int cropsLevel;
@@ -22,6 +24,8 @@ public class RegeneratorBlock {
                             int cropsLevel, boolean particlesEnabled, long nextRegenTimestamp) {
         this.location = location.clone();
         this.ownerUUID = ownerUUID;
+        World w = this.location.getWorld();
+        this.worldName = (w != null) ? w.getName() : "";
         this.timeLevel = timeLevel;
         this.radiusLevel = radiusLevel;
         this.cropsLevel = cropsLevel;
@@ -29,8 +33,26 @@ public class RegeneratorBlock {
         this.nextRegenTimestamp = nextRegenTimestamp;
     }
 
-    public Location getLocation() { return location; }
+    /** Copia defensiva: los callers no pueden mutar el estado interno. */
+    public Location getLocation() { return location.clone(); }
     public UUID getOwnerUUID() { return ownerUUID; }
+
+    /** Nombre del mundo: el real si está cargado, el guardado si no. Nunca null. */
+    public String getWorldName() {
+        World w = location.getWorld();
+        return (w != null) ? w.getName() : worldName;
+    }
+
+    /** Solo para loadAll(): conserva el nombre del mundo aún no cargado. */
+    public void setWorldName(String worldName) { this.worldName = worldName; }
+
+    /**
+     * Re-vincula la Location a un mundo recién cargado (p. ej. Multiverse
+     * carga mundos después de habilitar los plugins). No-op si ya tiene mundo.
+     */
+    public void relinkWorld(World world) {
+        if (location.getWorld() == null && world != null) location.setWorld(world);
+    }
 
     public int getTimeLevel() { return timeLevel; }
     public void setTimeLevel(int level) { this.timeLevel = level; }
@@ -53,7 +75,7 @@ public class RegeneratorBlock {
     }
 
     public String getKey() {
-        return location.getWorld().getName() + ","
+        return getWorldName() + ","
                 + location.getBlockX() + ","
                 + location.getBlockY() + ","
                 + location.getBlockZ();
