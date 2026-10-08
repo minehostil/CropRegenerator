@@ -78,8 +78,6 @@ public class CropRegeneratorPlugin extends JavaPlugin {
         // Autosave cada 5 minutos (se cancela solo al deshabilitar el plugin)
         getServer().getScheduler().runTaskTimer(this, () -> blockDataManager.saveAll(),
         20L * 300L, 20L * 300L);
-        blockDataManager.loadAll();
-        blockDataManager.spawnHologramsInLoadedChunks();
         // Solo iniciar el task si hay jugadores conectados (evita consumo en servidor vacío)
         if (!getServer().getOnlinePlayers().isEmpty()) {
             regeneratorManager.startAll();
