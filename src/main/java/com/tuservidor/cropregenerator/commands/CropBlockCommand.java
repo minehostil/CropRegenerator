@@ -4,7 +4,8 @@ import com.tuservidor.cropregenerator.CropRegeneratorPlugin;
 import com.tuservidor.cropregenerator.model.RegeneratorBlock;
 import com.tuservidor.cropregenerator.util.ItemUtil;
 import com.tuservidor.cropregenerator.util.MessageUtil;
-import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -29,7 +30,8 @@ import java.util.stream.IntStream;
  */
 public class CropBlockCommand implements CommandExecutor, TabCompleter {
 
-    private static final MiniMessage MM = MiniMessage.miniMessage();
+    private static final LegacyComponentSerializer LEGACY = LegacyComponentSerializer.builder().character('&').hexColors().build();
+    private static Component text(String s) { return LEGACY.deserialize(s); }
     private final CropRegeneratorPlugin plugin;
 
     public CropBlockCommand(CropRegeneratorPlugin plugin) {
@@ -57,7 +59,7 @@ public class CropBlockCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 if (args.length < 3) {
-                    sender.sendMessage(MM.deserialize("<red>Uso: /cropblock give <jugador> <nivel>"));
+                    sender.sendMessage(text("&cUso: /cropblock give <jugador> <nivel>"));
                     return true;
                 }
 
@@ -83,14 +85,14 @@ public class CropBlockCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 if (args.length < 6) {
-                    sender.sendMessage(MM.deserialize(
-                            "<red>Uso: /cropblock upgradeblock <mundo> <x> <y> <z> <nivel>"));
+                    sender.sendMessage(text(
+                            "&cUso: /cropblock upgradeblock <mundo> <x> <y> <z> <nivel>"));
                     return true;
                 }
 
                 World world = Bukkit.getWorld(args[1]);
                 if (world == null) {
-                    sender.sendMessage(MM.deserialize("<red>Mundo '<white>" + args[1] + "<red>' no encontrado."));
+                    sender.sendMessage(text("&cMundo '&f" + args[1] + "&c' no encontrado."));
                     return true;
                 }
 
@@ -100,7 +102,7 @@ public class CropBlockCommand implements CommandExecutor, TabCompleter {
                     y = Integer.parseInt(args[3]);
                     z = Integer.parseInt(args[4]);
                 } catch (NumberFormatException e) {
-                    sender.sendMessage(MM.deserialize("<red>Las coordenadas deben ser números enteros."));
+                    sender.sendMessage(text("&cLas coordenadas deben ser números enteros."));
                     return true;
                 }
 
@@ -110,46 +112,45 @@ public class CropBlockCommand implements CommandExecutor, TabCompleter {
                 Location loc = new Location(world, x, y, z);
                 RegeneratorBlock rb = plugin.getBlockDataManager().getBlock(loc);
                 if (rb == null) {
-                    sender.sendMessage(MM.deserialize(
-                            "<red>No hay bloque regenerador en <white>" +
-                            args[1] + " " + x + " " + y + " " + z + "<red>."));
+                    sender.sendMessage(text(
+                            "&cNo hay bloque regenerador en &f" +
+                            args[1] + " " + x + " " + y + " " + z + "&c."));
                     return true;
                 }
 
                 if (!plugin.getUpgradeManager().levelExists(level)) {
                     MessageUtil.send(sender, "invalid-level",
-                            "{max}", String.valueOf(plugin.getUpgradeManager().getMaxLevel()));
+                            "{max}", String.valueOf(Math.max(plugin.getUpgradeManager().getMaxTime(), Math.max(plugin.getUpgradeManager().getMaxRadius(), plugin.getUpgradeManager().getMaxCrops()))));
                     return true;
                 }
 
                 rb.setLevel(level);
                 plugin.getHologramManager().spawnOrUpdate(rb);
-                sender.sendMessage(MM.deserialize(
-                        "<green>Bloque en <white>" + args[1] + " " + x + " " + y + " " + z +
-                        "<green> actualizado al nivel <yellow>" + level + "<green>."));
+                sender.sendMessage(text(
+                        "&aBloque en &f" + args[1] + " " + x + " " + y + " " + z +
+                        "&a actualizado al nivel &e" + level + "&a."));
             }
 
             // ── /cropblock info ──────────────────────────────
             case "info" -> {
                 if (!(sender instanceof Player player)) {
-                    sender.sendMessage(MM.deserialize("<red>Solo jugadores pueden usar este comando."));
+                    sender.sendMessage(text("&cSolo jugadores pueden usar este comando."));
                     return true;
                 }
 
                 RegeneratorBlock rb = plugin.getBlockDataManager()
                         .getBlock(player.getLocation().subtract(0, 1, 0));
                 if (rb == null) {
-                    player.sendMessage(MM.deserialize("<red>No estás sobre un bloque regenerador."));
+                    player.sendMessage(text("&cNo estás sobre un bloque regenerador."));
                     return true;
                 }
-                var lvl = plugin.getUpgradeManager().getLevel(rb.getLevel());
-                player.sendMessage(MM.deserialize(
-                        "<dark_green>══ <green>Info del Bloque <dark_green>══\n" +
-                        "<gray>Dueño: <white>" + Bukkit.getOfflinePlayer(rb.getOwnerUUID()).getName() + "\n" +
-                        "<gray>Nivel: <yellow>" + rb.getLevel() + "\n" +
-                        "<gray>Radio: <green>" + lvl.radius() + " bloques\n" +
-                        "<gray>Intervalo: <yellow>" + lvl.regenInterval() + "s\n" +
-                        "<gray>Próx. regen: <aqua>" + rb.getSecondsUntilRegen() + "s"
+                player.sendMessage(text(
+                        "&8══ &aInfo del Bloque &8══\n" +
+                        "&7Dueño: &f" + Bukkit.getOfflinePlayer(rb.getOwnerUUID()).getName() + "\n" +
+                        "&7Tiempo: &b" + rb.getTimeLevel() + " &8| &7Radio: &a" + rb.getRadiusLevel() + " &8| &7Cultivos: &e" + rb.getCropsLevel() + "\n" +
+                        "&7Radio efectivo: &a" + plugin.getUpgradeManager().getRadius(rb.getRadiusLevel()) + " bloques\n" +
+                        "&7Intervalo: &b" + plugin.getUpgradeManager().getInterval(rb.getTimeLevel()) + "s\n" +
+                        "&7Próx. regen: &d" + rb.getSecondsUntilRegen() + "s"
                 ));
             }
 
@@ -161,8 +162,9 @@ public class CropBlockCommand implements CommandExecutor, TabCompleter {
                 }
 
                 plugin.reloadConfig();
-                plugin.getUpgradeManager().reload(plugin);
+                plugin.getUpgradeManager().reload();
                 plugin.getRegeneratorManager().reload();
+                plugin.getParticleManager().start();
 
                 // Reconstruir cache estático de todos los hologramas activos
                 for (com.tuservidor.cropregenerator.model.RegeneratorBlock rb
@@ -170,8 +172,8 @@ public class CropBlockCommand implements CommandExecutor, TabCompleter {
                     plugin.getHologramManager().spawnOrUpdate(rb);
                 }
 
-                sender.sendMessage(MM.deserialize(
-                        "<dark_green>[<green>CropRegen<dark_green>] <green>Configuración recargada correctamente."));
+                sender.sendMessage(text(
+                        "&8[&aCropRegen&8] &aConfiguración recargada correctamente."));
             }
 
             default -> sendHelp(sender);
@@ -188,12 +190,12 @@ public class CropBlockCommand implements CommandExecutor, TabCompleter {
             level = Integer.parseInt(raw);
         } catch (NumberFormatException e) {
             MessageUtil.send(sender, "invalid-level",
-                    "{max}", String.valueOf(plugin.getUpgradeManager().getMaxLevel()));
+                    "{max}", String.valueOf(Math.max(plugin.getUpgradeManager().getMaxTime(), Math.max(plugin.getUpgradeManager().getMaxRadius(), plugin.getUpgradeManager().getMaxCrops()))));
             return -1;
         }
         if (!plugin.getUpgradeManager().levelExists(level)) {
             MessageUtil.send(sender, "invalid-level",
-                    "{max}", String.valueOf(plugin.getUpgradeManager().getMaxLevel()));
+                    "{max}", String.valueOf(Math.max(plugin.getUpgradeManager().getMaxTime(), Math.max(plugin.getUpgradeManager().getMaxRadius(), plugin.getUpgradeManager().getMaxCrops()))));
             return -1;
         }
         return level;
@@ -204,15 +206,15 @@ public class CropBlockCommand implements CommandExecutor, TabCompleter {
                 || p.hasPermission("cropregenerator.admin");
 
         StringBuilder sb = new StringBuilder();
-        sb.append("<dark_green>══ <green>CropRegenerator <dark_green>══\n");
-        sb.append("<yellow>/cropblock give <jugador> <nivel> <gray>- Da un bloque\n");
-        sb.append("<yellow>/cropblock info <gray>- Info del bloque bajo tus pies");
+        sb.append("&8══ &aCropRegenerator &8══\n");
+        sb.append("&e/cropblock give <jugador> <nivel> &7- Da un bloque\n");
+        sb.append("&e/cropblock info &7- Info del bloque bajo tus pies");
         if (isAdmin) {
-            sb.append("\n<yellow>/cropblock upgradeblock <mundo> <x> <y> <z> <nivel> " +
-                      "<gray>- Mejora un bloque por coordenadas");
-            sb.append("\n<yellow>/cropblock reload <gray>- Recarga la configuración");
+            sb.append("\n&e/cropblock upgradeblock <mundo> <x> <y> <z> <nivel> " +
+                      "&7- Mejora un bloque por coordenadas");
+            sb.append("\n&e/cropblock reload &7- Recarga la configuración");
         }
-        sender.sendMessage(MM.deserialize(sb.toString()));
+        sender.sendMessage(text(sb.toString()));
     }
 
     @Override
@@ -251,7 +253,7 @@ public class CropBlockCommand implements CommandExecutor, TabCompleter {
     }
 
     private List<String> levelList() {
-        return IntStream.rangeClosed(1, plugin.getUpgradeManager().getMaxLevel())
+        return IntStream.rangeClosed(1, Math.max(plugin.getUpgradeManager().getMaxTime(), Math.max(plugin.getUpgradeManager().getMaxRadius(), plugin.getUpgradeManager().getMaxCrops())))
                 .mapToObj(String::valueOf).toList();
     }
 }
