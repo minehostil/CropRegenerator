@@ -70,7 +70,6 @@ public class BlockDataManager {
             continue;
             }
 
-            config.set(key + ".world", loc.getWorld().getName());
             // ... el resto del método queda igual
             config.set(key + ".world", loc.getWorld().getName());
             config.set(key + ".x", loc.getBlockX());
