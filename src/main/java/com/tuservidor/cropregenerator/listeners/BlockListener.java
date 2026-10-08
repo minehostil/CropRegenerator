@@ -10,7 +10,11 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockExplodeEvent;
+import org.bukkit.event.block.BlockPistonExtendEvent;
+import org.bukkit.event.block.BlockPistonRetractEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.inventory.ItemStack;
 
 public class BlockListener implements Listener {
@@ -99,6 +103,44 @@ public class BlockListener implements Listener {
         block.getWorld().dropItemNaturally(block.getLocation(), drop);
 
         MessageUtil.send(player, "removed");
+    }
+
+    // ── Protección: pistones ─────────────────────────────────
+    // Si un pistón mueve un regenerador, el bloque físico se desincronizaría
+    // de los datos (holograma fantasma + regeneración en el vacío). Se cancela.
+
+    @EventHandler(ignoreCancelled = true)
+    public void onPistonExtend(BlockPistonExtendEvent event) {
+        for (Block b : event.getBlocks()) {
+            if (plugin.getBlockDataManager().isRegeneratorBlock(b.getLocation())) {
+                event.setCancelled(true);
+                return;
+            }
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onPistonRetract(BlockPistonRetractEvent event) {
+        for (Block b : event.getBlocks()) {
+            if (plugin.getBlockDataManager().isRegeneratorBlock(b.getLocation())) {
+                event.setCancelled(true);
+                return;
+            }
+        }
+    }
+
+    // ── Protección: explosiones ──────────────────────────────
+    // La explosión ocurre con normalidad, pero el regenerador es inmune:
+    // se elimina de la lista de bloques afectados en vez de cancelar todo.
+
+    @EventHandler(ignoreCancelled = true)
+    public void onEntityExplode(EntityExplodeEvent event) {
+        event.blockList().removeIf(b -> plugin.getBlockDataManager().isRegeneratorBlock(b.getLocation()));
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onBlockExplode(BlockExplodeEvent event) {
+        event.blockList().removeIf(b -> plugin.getBlockDataManager().isRegeneratorBlock(b.getLocation()));
     }
 
     // ── Helper ───────────────────────────────────────────────
