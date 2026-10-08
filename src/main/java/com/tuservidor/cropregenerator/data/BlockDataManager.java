@@ -11,55 +11,47 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
-/**
- * Carga y guarda los RegeneratorBlocks en data/blocks.yml.
- * También indexa por UUID de isla (para borrado masivo con SuperiorSkyblock2).
- */
+/** Persistencia e índices O(1) de regeneradores. */
 public class BlockDataManager {
-
     private final CropRegeneratorPlugin plugin;
     private final File dataFile;
-    private YamlConfiguration dataConfig;
-
-    // key (world,x,y,z) → bloque
     private final Map<String, RegeneratorBlock> blocksByKey = new HashMap<>();
-
-    // islandId → lista de keys de bloques en esa isla
     private final Map<String, Set<String>> blocksByIsland = new HashMap<>();
+    private final Map<String, String> islandByBlockKey = new HashMap<>();
+    private final Map<String, Set<String>> blocksByChunk = new HashMap<>();
 
     public BlockDataManager(CropRegeneratorPlugin plugin) {
-        this.plugin   = plugin;
+        this.plugin = plugin;
         this.dataFile = new File(plugin.getDataFolder(), "data/blocks.yml");
     }
 
-    // ── Persistencia ────────────────────────────────────────
-
     public void loadAll() {
+        blocksByKey.clear();
+        blocksByIsland.clear();
+        islandByBlockKey.clear();
+        blocksByChunk.clear();
         if (!dataFile.exists()) return;
-        dataConfig = YamlConfiguration.loadConfiguration(dataFile);
 
-        for (String key : dataConfig.getKeys(false)) {
+        YamlConfiguration config = YamlConfiguration.loadConfiguration(dataFile);
+        for (String key : config.getKeys(false)) {
             try {
-                String worldName = dataConfig.getString(key + ".world");
-                int bx = dataConfig.getInt(key + ".x");
-                int by = dataConfig.getInt(key + ".y");
-                int bz = dataConfig.getInt(key + ".z");
-                UUID owner  = UUID.fromString(Objects.requireNonNull(dataConfig.getString(key + ".owner")));
-                int level   = dataConfig.getInt(key + ".level", 1);
-                String islandId = dataConfig.getString(key + ".islandId", "");
-
+                String worldName = Objects.requireNonNull(config.getString(key + ".world"));
                 World world = Bukkit.getWorld(worldName);
                 if (world == null) continue;
+                int x = config.getInt(key + ".x"), y = config.getInt(key + ".y"), z = config.getInt(key + ".z");
+                UUID owner = UUID.fromString(Objects.requireNonNull(config.getString(key + ".owner")));
+                int legacy = config.getInt(key + ".level", 1);
+                int time = config.getInt(key + ".time-level", legacy);
+                int radius = config.getInt(key + ".radius-level", legacy);
+                int crops = config.getInt(key + ".crops-level", legacy);
+                boolean particles = config.getBoolean(key + ".particles", false);
+                long next = config.getLong(key + ".next-regen", 0L);
+                if (next <= 0L) next = System.currentTimeMillis() + plugin.getUpgradeManager().getInterval(time) * 1000L;
 
-                Location loc = new Location(world, bx, by, bz);
-                RegeneratorBlock rb = new RegeneratorBlock(loc, owner, level);
-
-                blocksByKey.put(rb.getKey(), rb);
-                if (!islandId.isEmpty()) indexIsland(islandId, rb.getKey());
-
-                // Restaurar holograma
-                plugin.getHologramManager().spawnOrUpdate(rb);
-
+                RegeneratorBlock rb = new RegeneratorBlock(new Location(world, x, y, z), owner,
+                        time, radius, crops, particles, next);
+                String islandId = config.getString(key + ".islandId", "");
+                index(rb, islandId.isBlank() ? null : islandId);
             } catch (Exception e) {
                 plugin.getLogger().warning("Error al cargar bloque " + key + ": " + e.getMessage());
             }
@@ -68,88 +60,103 @@ public class BlockDataManager {
     }
 
     public void saveAll() {
-        dataConfig = new YamlConfiguration();
+        YamlConfiguration config = new YamlConfiguration();
         for (RegeneratorBlock rb : blocksByKey.values()) {
             String key = rb.getKey();
-            dataConfig.set(key + ".world", rb.getLocation().getWorld().getName());
-            dataConfig.set(key + ".x",     rb.getLocation().getBlockX());
-            dataConfig.set(key + ".y",     rb.getLocation().getBlockY());
-            dataConfig.set(key + ".z",     rb.getLocation().getBlockZ());
-            dataConfig.set(key + ".owner", rb.getOwnerUUID().toString());
-            dataConfig.set(key + ".level", rb.getLevel());
-
-            // Guardar islandId si existe
-            String islandId = getIslandIdForKey(key);
-            if (islandId != null) dataConfig.set(key + ".islandId", islandId);
+            Location loc = rb.getLocation();
+            config.set(key + ".world", loc.getWorld().getName());
+            config.set(key + ".x", loc.getBlockX());
+            config.set(key + ".y", loc.getBlockY());
+            config.set(key + ".z", loc.getBlockZ());
+            config.set(key + ".owner", rb.getOwnerUUID().toString());
+            config.set(key + ".time-level", rb.getTimeLevel());
+            config.set(key + ".radius-level", rb.getRadiusLevel());
+            config.set(key + ".crops-level", rb.getCropsLevel());
+            config.set(key + ".particles", rb.isParticlesEnabled());
+            config.set(key + ".next-regen", rb.getNextRegenTimestamp());
+            String islandId = islandByBlockKey.get(key);
+            if (islandId != null) config.set(key + ".islandId", islandId);
         }
         try {
             dataFile.getParentFile().mkdirs();
-            dataConfig.save(dataFile);
+            config.save(dataFile);
         } catch (IOException e) {
             plugin.getLogger().severe("Error al guardar bloques: " + e.getMessage());
         }
     }
 
-    // ── API pública ─────────────────────────────────────────
-
     public void addBlock(RegeneratorBlock rb, String islandId) {
-        blocksByKey.put(rb.getKey(), rb);
-        if (islandId != null && !islandId.isEmpty()) indexIsland(islandId, rb.getKey());
+        index(rb, islandId);
+    }
+
+    private void index(RegeneratorBlock rb, String islandId) {
+        String key = rb.getKey();
+        blocksByKey.put(key, rb);
+        String chunkKey = chunkKey(rb.getLocation());
+        blocksByChunk.computeIfAbsent(chunkKey, k -> new HashSet<>()).add(key);
+        if (islandId != null && !islandId.isBlank()) {
+            blocksByIsland.computeIfAbsent(islandId, k -> new HashSet<>()).add(key);
+            islandByBlockKey.put(key, islandId);
+        }
     }
 
     public void removeBlock(RegeneratorBlock rb) {
-        blocksByKey.remove(rb.getKey());
-        // Limpiar índice isla
-        blocksByIsland.values().forEach(set -> set.remove(rb.getKey()));
+        String key = rb.getKey();
+        blocksByKey.remove(key);
+        String island = islandByBlockKey.remove(key);
+        if (island != null) {
+            Set<String> set = blocksByIsland.get(island);
+            if (set != null) { set.remove(key); if (set.isEmpty()) blocksByIsland.remove(island); }
+        }
+        String chunk = chunkKey(rb.getLocation());
+        Set<String> set = blocksByChunk.get(chunk);
+        if (set != null) { set.remove(key); if (set.isEmpty()) blocksByChunk.remove(chunk); }
     }
 
     public RegeneratorBlock getBlock(Location loc) {
-        String key = loc.getWorld().getName() + ","
-                + loc.getBlockX() + "," + loc.getBlockY() + "," + loc.getBlockZ();
-        return blocksByKey.get(key);
+        if (loc.getWorld() == null) return null;
+        return blocksByKey.get(loc.getWorld().getName() + "," + loc.getBlockX() + "," + loc.getBlockY() + "," + loc.getBlockZ());
     }
 
-    public boolean isRegeneratorBlock(Location loc) {
-        return getBlock(loc) != null;
+    public boolean isRegeneratorBlock(Location loc) { return getBlock(loc) != null; }
+    public Collection<RegeneratorBlock> getAllBlocks() { return Collections.unmodifiableCollection(blocksByKey.values()); }
+
+    public void spawnHologramsInLoadedChunks() {
+        for (World world : Bukkit.getWorlds()) {
+            for (org.bukkit.Chunk chunk : world.getLoadedChunks()) {
+                for (RegeneratorBlock rb : getBlocksInChunk(chunk)) plugin.getHologramManager().spawnOrUpdate(rb);
+            }
+        }
     }
 
-    public Collection<RegeneratorBlock> getAllBlocks() {
-        return blocksByKey.values();
+    public List<RegeneratorBlock> getBlocksInChunk(org.bukkit.Chunk chunk) {
+        Set<String> keys = blocksByChunk.get(chunk.getWorld().getName() + "," + chunk.getX() + "," + chunk.getZ());
+        if (keys == null || keys.isEmpty()) return List.of();
+        List<RegeneratorBlock> result = new ArrayList<>(keys.size());
+        for (String key : keys) { RegeneratorBlock rb = blocksByKey.get(key); if (rb != null) result.add(rb); }
+        return result;
     }
 
-    /** Cuenta cuántos bloques tiene el jugador/isla. */
     public int countBlocksForIsland(String islandId) {
         Set<String> keys = blocksByIsland.get(islandId);
         return keys == null ? 0 : keys.size();
     }
 
-    /** Elimina todos los bloques de una isla (cuando la isla es borrada). */
     public List<RegeneratorBlock> removeAllForIsland(String islandId) {
         Set<String> keys = blocksByIsland.remove(islandId);
-        List<RegeneratorBlock> removed = new ArrayList<>();
-        if (keys == null) return removed;
-
-        for (String key : keys) {
-            RegeneratorBlock rb = blocksByKey.remove(key);
-            if (rb != null) removed.add(rb);
+        if (keys == null || keys.isEmpty()) return List.of();
+        List<RegeneratorBlock> removed = new ArrayList<>(keys.size());
+        for (String key : new ArrayList<>(keys)) {
+            RegeneratorBlock rb = blocksByKey.get(key);
+            if (rb != null) { removeBlock(rb); removed.add(rb); }
         }
         return removed;
     }
 
-    // ── Helpers ─────────────────────────────────────────────
+    public String getIslandIdForBlock(RegeneratorBlock rb) { return islandByBlockKey.get(rb.getKey()); }
+    public String getIslandIdForKey(String key) { return islandByBlockKey.get(key); }
 
-    private void indexIsland(String islandId, String blockKey) {
-        blocksByIsland.computeIfAbsent(islandId, k -> new HashSet<>()).add(blockKey);
-    }
-
-    public String getIslandIdForBlock(com.tuservidor.cropregenerator.model.RegeneratorBlock rb) {
-        return getIslandIdForKey(rb.getKey());
-    }
-
-    public String getIslandIdForKey(String key) {
-        for (Map.Entry<String, Set<String>> entry : blocksByIsland.entrySet()) {
-            if (entry.getValue().contains(key)) return entry.getKey();
-        }
-        return null;
+    private String chunkKey(Location loc) {
+        return loc.getWorld().getName() + "," + (loc.getBlockX() >> 4) + "," + (loc.getBlockZ() >> 4);
     }
 }
