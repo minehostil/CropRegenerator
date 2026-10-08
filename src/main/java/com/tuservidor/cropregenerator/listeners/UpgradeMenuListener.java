@@ -23,11 +23,17 @@ public class UpgradeMenuListener implements Listener {
         event.setCancelled(true); if (!(event.getWhoClicked() instanceof Player player)) return;
         RegeneratorBlock rb = find(holder.blockKey());
         if (rb == null || !rb.getOwnerUUID().equals(player.getUniqueId())) { player.closeInventory(); return; }
-        switch (event.getRawSlot()) {
-            case 1 -> upgrade(player, rb, UpgradeManager.Tree.TIME);
-            case 3 -> upgrade(player, rb, UpgradeManager.Tree.RADIUS);
-            case 5 -> upgrade(player, rb, UpgradeManager.Tree.CROPS);
-            case 7 -> { rb.setParticlesEnabled(!rb.isParticlesEnabled()); MessageUtil.send(player, "particles-toggled", "{state}", rb.isParticlesEnabled() ? "activadas" : "desactivadas"); menu.open(player, rb); }
+        String action = holder.action(event.getRawSlot());
+        switch (action) {
+            case "UPGRADE_TIME" -> upgrade(player, rb, UpgradeManager.Tree.TIME);
+            case "UPGRADE_RADIUS" -> upgrade(player, rb, UpgradeManager.Tree.RADIUS);
+            case "UPGRADE_CROPS" -> upgrade(player, rb, UpgradeManager.Tree.CROPS);
+            case "TOGGLE_PARTICLES" -> {
+                rb.setParticlesEnabled(!rb.isParticlesEnabled());
+                MessageUtil.send(player, "particles-toggled", "{state}",
+                        rb.isParticlesEnabled() ? "activadas" : "desactivadas");
+                menu.open(player, rb);
+            }
             default -> { }
         }
     }
