@@ -16,74 +16,40 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Gestiona los timers de regeneración usando FAWE para edición async eficiente.
- */
+/** Gestiona los timers y limita a una regeneración async por bloque. */
 public class RegeneratorManager {
-
-    // Todos los cultivos soportados con su age máximo
-    private static final Map<String, Integer> ALL_CROPS = new HashMap<>();
-
-    static {
-        ALL_CROPS.put("minecraft:wheat",            7);
-        ALL_CROPS.put("minecraft:carrots",          7);
-        ALL_CROPS.put("minecraft:potatoes",         7);
-        ALL_CROPS.put("minecraft:beetroots",        3);
-        ALL_CROPS.put("minecraft:nether_wart",      3);
-        ALL_CROPS.put("minecraft:cocoa",            2);
-        ALL_CROPS.put("minecraft:melon_stem",       7);
-        ALL_CROPS.put("minecraft:pumpkin_stem",     7);
-        ALL_CROPS.put("minecraft:sweet_berry_bush", 3);
-        ALL_CROPS.put("minecraft:pitcher_crop",     4);
-        ALL_CROPS.put("minecraft:torchflower_crop", 1);
-    }
-
-    // Cultivos activos según config.yml → crops
-    private final Map<String, Integer> CROP_MAX_AGE = new HashMap<>();
-
+    private static final Map<String, Integer> ALL_CROPS = Map.of(
+            "wheat", 7, "carrots", 7, "potatoes", 7, "beetroots", 3, "nether_wart", 3,
+            "cocoa", 2, "melon_stem", 7, "pumpkin_stem", 7, "sweet_berry_bush", 3,
+            "pitcher_crop", 4, "torchflower_crop", 1);
+    private final Map<String, Integer> cropMaxAge = new HashMap<>();
+    private final Map<String, Boolean> enabledCrops = new HashMap<>();
+    private final Set<String> inFlight = ConcurrentHashMap.newKeySet();
     private final CropRegeneratorPlugin plugin;
     private BukkitTask globalTask;
 
-    public RegeneratorManager(CropRegeneratorPlugin plugin) {
-        this.plugin = plugin;
-        loadCrops();
-    }
+    public RegeneratorManager(CropRegeneratorPlugin plugin) { this.plugin = plugin; loadCrops(); }
 
     public void startAll() {
-        if (globalTask != null) return; // ya corriendo
-
-        // Leer intervalo de actualización del holograma desde config (mínimo 1 segundo)
-        int updateSecs = Math.max(1, plugin.getConfig().getInt("hologram.update-interval", 1));
-        long updateTicks = updateSecs * 20L;
-
-        // update-countdown: false desactiva completamente la actualización del countdown
+        if (globalTask != null) return;
+        long updateTicks = Math.max(20L, plugin.getConfig().getLong("hologram.update-interval", 1L) * 20L);
         boolean updateCountdown = plugin.getConfig().getBoolean("hologram.update-countdown", true);
-        boolean hasDynamic = updateCountdown && plugin.getConfig().getStringList("hologram.lines")
-                .stream().anyMatch(l -> l.contains("{next_regen}"));
-
+        boolean hasDynamic = updateCountdown && plugin.getConfig().getStringList("hologram.lines").stream().anyMatch(l -> l.contains("{next_regen}"));
         globalTask = new BukkitRunnable() {
-            @Override
-            public void run() {
+            @Override public void run() {
                 long now = System.currentTimeMillis();
                 for (RegeneratorBlock rb : List.copyOf(plugin.getBlockDataManager().getAllBlocks())) {
                     Location loc = rb.getLocation();
-                    if (loc.getWorld() == null) continue;
-
-                    // Solo procesar si el chunk está cargado (jugador cercano)
-                    if (!loc.getWorld().isChunkLoaded(
-                            loc.getBlockX() >> 4, loc.getBlockZ() >> 4)) continue;
-
-                    // Solo actualizar holograma si hay líneas dinámicas
+                    if (loc.getWorld() == null || !loc.getWorld().isChunkLoaded(loc.getBlockX() >> 4, loc.getBlockZ() >> 4)) continue;
                     if (hasDynamic) plugin.getHologramManager().updateText(rb);
-
-                    // Regenerar si llegó la hora
-                    if (now >= rb.getNextRegenTimestamp()) {
-                        long intervalMs = plugin.getUpgradeManager()
-                                .getLevel(rb.getLevel()).regenInterval() * 1000L;
-                        rb.setNextRegenTimestamp(now + intervalMs);
+                    if (now >= rb.getNextRegenTimestamp() && inFlight.add(rb.getKey())) {
+                        rb.setNextRegenTimestamp(now + plugin.getUpgradeManager().getInterval(rb.getTimeLevel()) * 1000L);
                         regenerateAsync(rb);
                     }
                 }
@@ -91,105 +57,48 @@ public class RegeneratorManager {
         }.runTaskTimer(plugin, 20L, updateTicks);
     }
 
-    public void stopAll() {
-        if (globalTask != null) {
-            globalTask.cancel();
-            globalTask = null;
-        }
-    }
+    public void stopAll() { if (globalTask != null) { globalTask.cancel(); globalTask = null; } }
+    public void pause() { stopAll(); }
+    public void resume() { if (globalTask == null && !plugin.getServer().getOnlinePlayers().isEmpty()) startAll(); }
 
-    /** Pausa el task global (sin jugadores conectados). */
-    public void pause() {
-        stopAll();
-    }
-
-    /** Reanuda el task global (jugador se conectó). */
-    public void resume() {
-        if (globalTask == null) startAll();
-    }
-
-    /** Carga los cultivos activos desde config.yml. */
-    private void loadCrops() {
-        CROP_MAX_AGE.clear();
-        for (Map.Entry<String, Integer> entry : ALL_CROPS.entrySet()) {
-            String configKey = entry.getKey().replace("minecraft:", "");
-            if (plugin.getConfig().getBoolean("crops." + configKey, true)) {
-                CROP_MAX_AGE.put(entry.getKey(), entry.getValue());
-            }
-        }
-        if (plugin.getConfig().getBoolean("debug-crops", false)) {
-            plugin.getLogger().info("[CropRegen] Cultivos activos: " + CROP_MAX_AGE.keySet()
-                    .stream().map(k -> k.replace("minecraft:", "")).toList());
-        }
-    }
-
-    /** Recarga la configuración — reinicia el task con los nuevos valores. */
     public void reload() {
-        loadCrops();
-        stopAll();
+        loadCrops(); stopAll();
         if (!plugin.getServer().getOnlinePlayers().isEmpty()) startAll();
+    }
+
+    private void loadCrops() {
+        cropMaxAge.clear(); enabledCrops.clear();
+        for (Map.Entry<String,Integer> entry : ALL_CROPS.entrySet()) {
+            boolean enabled = plugin.getConfig().getBoolean("crops." + entry.getKey(), true);
+            enabledCrops.put(entry.getKey(), enabled); if (enabled) cropMaxAge.put(entry.getKey(), entry.getValue());
+        }
     }
 
     private void regenerateAsync(RegeneratorBlock rb) {
         Location center = rb.getLocation();
-        if (center.getWorld() == null) return;
-
-        int radius = plugin.getUpgradeManager().getLevel(rb.getLevel()).radius();
-
-        com.sk89q.worldedit.world.World weWorld = BukkitAdapter.adapt(center.getWorld());
-
-        BlockVector3 min = BlockVector3.at(
-                center.getBlockX() - radius,
-                center.getBlockY() - radius,
-                center.getBlockZ() - radius);
-        BlockVector3 max = BlockVector3.at(
-                center.getBlockX() + radius,
-                center.getBlockY() + radius,
-                center.getBlockZ() + radius);
-        CuboidRegion region = new CuboidRegion(weWorld, min, max);
-
+        if (center.getWorld() == null || !center.getWorld().isChunkLoaded(center.getBlockX() >> 4, center.getBlockZ() >> 4)) { inFlight.remove(rb.getKey()); return; }
+        int radius = plugin.getUpgradeManager().getRadius(rb.getRadiusLevel());
+        Set<String> unlocked = new HashSet<>(plugin.getUpgradeManager().getUnlockedCrops(rb.getCropsLevel(), enabledCrops));
+        if (unlocked.isEmpty()) { inFlight.remove(rb.getKey()); return; }
+        var world = BukkitAdapter.adapt(center.getWorld());
+        BlockVector3 min = BlockVector3.at(center.getBlockX()-radius, center.getBlockY()-radius, center.getBlockZ()-radius);
+        BlockVector3 max = BlockVector3.at(center.getBlockX()+radius, center.getBlockY()+radius, center.getBlockZ()+radius);
+        CuboidRegion region = new CuboidRegion(world, min, max);
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
-            try (EditSession editSession = WorldEdit.getInstance()
-                    .newEditSessionBuilder()
-                    .world(weWorld)
-                    .fastMode(true)
-                    .limitUnlimited()
-                    .build()) {
-
-                int grown = 0;
-
+            try (EditSession session = WorldEdit.getInstance().newEditSessionBuilder().world(world).fastMode(true).limitUnlimited().build()) {
+                int grown=0;
                 for (BlockVector3 pos : region) {
-                    BlockState state = editSession.getBlock(pos);
-                    BlockType type   = state.getBlockType();
-
-                    if (type == null) continue;
-                    String typeId = type.id();
-                    if (!CROP_MAX_AGE.containsKey(typeId)) continue;
-
-                    Property<?> rawProp = type.getProperty("age");
-                    if (!(rawProp instanceof IntegerProperty ageProp)) continue;
-
-                    Integer currentAge = state.getState(ageProp);
-                    int maxAge = CROP_MAX_AGE.get(typeId);
-                    if (currentAge == null || currentAge >= maxAge) continue;
-
-                    BlockState mature = state.with(ageProp, maxAge);
-                    editSession.setBlock(pos, mature);
-                    grown++;
+                    BlockState state=session.getBlock(pos); BlockType type=state.getBlockType(); if(type==null)continue;
+                    String id=type.id(); if(id.startsWith("minecraft:"))id=id.substring(10);
+                    Integer maxAge=cropMaxAge.get(id); if(maxAge==null || !unlocked.contains(id))continue;
+                    Property<?> raw=type.getProperty("age"); if(!(raw instanceof IntegerProperty age))continue;
+                    Integer current=state.getState(age); if(current==null||current>=maxAge)continue;
+                    session.setBlock(pos,state.with(age,maxAge)); grown++;
                 }
-
-                if (grown > 0 && plugin.getConfig().getBoolean("debug-crops", false)) {
-                    plugin.getLogger().info("[CropRegen] Madurados " + grown + " cultivos en "
-                            + center.getWorld().getName()
-                            + " (" + center.getBlockX() + ","
-                            + center.getBlockY() + ","
-                            + center.getBlockZ() + ")");
-                }
-
-            } catch (Exception e) {
-                plugin.getLogger().warning("[FAWE] Error al regenerar cultivos: " + e.getMessage());
-                plugin.getLogger().warning("[FAWE] Causa: " + e.getCause());
-            }
+                if(grown>0 && plugin.getConfig().getBoolean("debug-crops",false)) plugin.getLogger().info("[CropRegen] Madurados "+grown+" cultivos en "+rb.getKey());
+            } catch(Exception e) {
+                plugin.getLogger().warning("[FAWE] Error al regenerar "+rb.getKey()+": "+e.getMessage());
+            } finally { inFlight.remove(rb.getKey()); }
         });
     }
 }
