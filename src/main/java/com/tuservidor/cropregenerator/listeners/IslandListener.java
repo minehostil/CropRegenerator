@@ -1,7 +1,7 @@
 package com.tuservidor.cropregenerator.listeners;
 
 import com.bgsoftware.superiorskyblock.api.events.IslandDisbandEvent;
-import com.bgsoftware.superiorskyblock.api.events.IslandOwnershipTransferEvent;
+import com.bgsoftware.superiorskyblock.api.events.IslandTransferEvent;
 import com.tuservidor.cropregenerator.CropRegeneratorPlugin;
 import com.tuservidor.cropregenerator.model.RegeneratorBlock;
 import com.tuservidor.cropregenerator.util.ItemUtil;
@@ -18,11 +18,13 @@ import java.util.List;
 /**
  * Eventos de SuperiorSkyblock2 que afectan a los regeneradores:
  *
- *  - IslandDisbandEvent:           isla disuelta → bloques devueltos a quien los colocó.
- *  - IslandOwnershipTransferEvent: isla transferida → bloques devueltos a quien los colocó
- *                                  (evita que el nuevo dueño herede mejoras que no pagó).
+ *  - IslandDisbandEvent:  isla disuelta → bloques devueltos a quien los colocó.
+ *  - IslandTransferEvent: isla transferida → bloques devueltos a quien los colocó
+ *                         (evita que el nuevo dueño herede mejoras que no pagó).
  *
  * El ítem devuelto conserva los TRES niveles originales del bloque.
+ * Si el dueño no está conectado, queda warning en consola con UUID y niveles
+ * para compensación manual.
  */
 public class IslandListener implements Listener {
 
@@ -38,7 +40,7 @@ public class IslandListener implements Listener {
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onIslandTransfer(IslandOwnershipTransferEvent event) {
+    public void onIslandTransfer(IslandTransferEvent event) {
         removeAndReturn(event.getIsland().getUniqueId().toString(), "transferida");
     }
 
@@ -47,6 +49,7 @@ public class IslandListener implements Listener {
     /** Retira todos los regeneradores de la isla y devuelve el ítem a quien lo colocó. */
     private void removeAndReturn(String islandId, String reason) {
         List<RegeneratorBlock> removed = plugin.getBlockDataManager().removeAllForIsland(islandId);
+        plugin.getBlockDataManager().saveAll(); // persiste la eliminación ya, sin esperar al autosave
 
         for (RegeneratorBlock rb : removed) {
             // Quitar holograma
