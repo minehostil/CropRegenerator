@@ -8,8 +8,8 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
 /**
- * Pausa el task global de regeneración cuando no hay jugadores
- * conectados y lo reanuda cuando alguien se une.
+ * Pausa el task global de regeneración y las partículas cuando no hay
+ * jugadores conectados, y los reanuda cuando alguien se une.
  * Elimina el consumo de CPU en servidores vacíos.
  */
 public class PlayerConnectionListener implements Listener {
@@ -22,9 +22,10 @@ public class PlayerConnectionListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerJoin(PlayerJoinEvent event) {
-        // Si era el único jugador ausente, reanudar el task
+        // Si era el único jugador ausente, reanudar los tasks
         if (plugin.getServer().getOnlinePlayers().size() == 1) {
             plugin.getRegeneratorManager().resume();
+            plugin.getParticleManager().resume();
         }
     }
 
@@ -33,6 +34,7 @@ public class PlayerConnectionListener implements Listener {
         // -1 porque el jugador aún está en la lista al dispararse el evento
         if (plugin.getServer().getOnlinePlayers().size() - 1 == 0) {
             plugin.getRegeneratorManager().pause();
+            plugin.getParticleManager().pause();
         }
     }
 }
