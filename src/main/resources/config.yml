@@ -110,6 +110,8 @@ messages:
   not-enough-items: "&cTe faltan ítems. Coste: &f{cost}"
   vault-unavailable: "&cLa economía no está disponible (Vault no encontrado)."
   payment-error: "&cError al procesar el pago. Inténtalo de nuevo."
+  # Devolución de bloques (isla disuelta/transferida) — placeholder: {reason} (disuelta/transferida)
+  blocks-returned: "&eLa isla fue {reason} — tus bloques regeneradores fueron devueltos a tu inventario."
 
 # ──────────────────────────────────────────
 # INTERACCIÓN (clic derecho sobre el bloque)
