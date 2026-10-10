@@ -41,8 +41,13 @@ public class UpgradeMenuListener implements Listener {
                 rb.setParticlesEnabled(!rb.isParticlesEnabled());
                 MessageUtil.send(player, "particles-toggled", "{state}",
                         rb.isParticlesEnabled() ? "activadas" : "desactivadas");
+                menu.playSound(player, "toggle", "UI_BUTTON_CLICK");
                 plugin.getBlockDataManager().saveAll();
                 menu.open(player, rb);
+            }
+            case "CLOSE" -> {
+                menu.playSound(player, "close", "UI_BUTTON_CLICK");
+                player.closeInventory();
             }
             default -> { }
         }
@@ -56,12 +61,20 @@ public class UpgradeMenuListener implements Listener {
     private void upgrade(Player player, RegeneratorBlock rb, UpgradeManager.Tree tree) {
         int current = switch (tree) { case TIME -> rb.getTimeLevel(); case RADIUS -> rb.getRadiusLevel(); case CROPS -> rb.getCropsLevel(); };
         UpgradeManager.UpgradeLevel next = plugin.getUpgradeManager().getNext(tree, current);
-        if (next == null) { MessageUtil.send(player, "upgrade-max"); return; }
-        if (!pay(player, next.cost())) return;
+        if (next == null) {
+            menu.playSound(player, "error", "ENTITY_VILLAGER_NO");
+            MessageUtil.send(player, "upgrade-max");
+            return;
+        }
+        if (!pay(player, next.cost())) {
+            menu.playSound(player, "error", "ENTITY_VILLAGER_NO");
+            return;
+        }
         switch (tree) { case TIME -> rb.setTimeLevel(next.level()); case RADIUS -> rb.setRadiusLevel(next.level()); case CROPS -> rb.setCropsLevel(next.level()); }
         if (tree == UpgradeManager.Tree.TIME) rb.setNextRegenTimestamp(System.currentTimeMillis() + next.interval() * 1000L);
         plugin.getHologramManager().spawnOrUpdate(rb);
         plugin.getBlockDataManager().saveAll();
+        menu.playSound(player, "upgrade", "ENTITY_PLAYER_LEVELUP");
         MessageUtil.send(player, "upgrade-success", "{tree}", treeName(tree), "{level}", String.valueOf(next.level()));
         menu.open(player, rb);
     }
@@ -79,7 +92,6 @@ public class UpgradeMenuListener implements Listener {
     private int count(Player p, Material m) { int n = 0; for (ItemStack i : p.getInventory().getStorageContents()) if (i != null && i.getType() == m) n += i.getAmount(); return n; }
     private void remove(Player p, Material m, int amount) { int rem = amount; ItemStack[] a = p.getInventory().getStorageContents(); for (int i = 0; i < a.length && rem > 0; i++) { ItemStack x = a[i]; if (x == null || x.getType() != m) continue; int take = Math.min(rem, x.getAmount()); x.setAmount(x.getAmount() - take); rem -= take; a[i] = x.getAmount() == 0 ? null : x; } p.getInventory().setStorageContents(a); }
 
-    // O(1): acceso directo al índice en vez de recorrer todos los bloques
     private RegeneratorBlock find(String key) { return plugin.getBlockDataManager().getBlockByKey(key); }
 
     private String treeName(UpgradeManager.Tree t) { return switch (t) { case TIME -> "Tiempo"; case RADIUS -> "Radio"; case CROPS -> "Cultivos"; }; }
