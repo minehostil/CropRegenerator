@@ -135,14 +135,14 @@ interaction:
 item:
   name: "&aRegenerador de Cultivos"
   lore:
-    - "&r&8──────────────────"
-    - "&r&7Tiempo: &eNv. {time_level}"
-    - "&r&7Radio: &aNv. {radius_level} &7({radius} bloques)"
-    - "&r&7Cultivos: &eNv. {crops_level}"
-    - "&r&7Recarga: &e{interval}s"
+    - "&8──────────────────"
+    - "&7Tiempo: &eNv. {time_level}"
+    - "&7Radio: &aNv. {radius_level} &7({radius} bloques)"
+    - "&7Cultivos: &eNv. {crops_level}"
+    - "&7Recarga: &e{interval}s"
     - ""
-    - "&r&8Coloca este bloque en tu isla"
-    - "&r&8──────────────────"
+    - "&8Coloca este bloque en tu isla"
+    - "&8──────────────────"
   # ¿Aplicar brillo de encantamiento al ítem?
   enchanted: true
   # ¿Ocultar los encantamientos? (solo aplica si enchanted: true)
