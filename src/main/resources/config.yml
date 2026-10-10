@@ -3,7 +3,7 @@
 # ╚══════════════════════════════════════════╝
 
 # Material del bloque regenerador (debe ser un bloque válido de Minecraft)
-block-material: EMERALD_BLOCK
+block-material: BEACON
 
 # Logs de debug de regeneración de cultivos en consola
 debug-crops: false
