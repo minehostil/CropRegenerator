@@ -1,7 +1,18 @@
-block-material: EMERALD_BLOCK
-debug-crops: false
-persist-data: true
+# ╔══════════════════════════════════════════╗
+# ║         CropRegenerator Config           ║
+# ╚══════════════════════════════════════════╝
 
+# Material del bloque regenerador (debe ser un bloque válido de Minecraft)
+block-material: EMERALD_BLOCK
+
+# Logs de debug de regeneración de cultivos en consola
+debug-crops: false
+
+# ──────────────────────────────────────────
+# CULTIVOS
+# Define qué cultivos serán afectados por la regeneración.
+# true = activo, false = ignorado
+# ──────────────────────────────────────────
 crops:
   wheat: true
   carrots: true
@@ -15,132 +26,248 @@ crops:
   pitcher_crop: true
   torchflower_crop: true
 
+# ──────────────────────────────────────────
+# LÍMITES
+# ──────────────────────────────────────────
 limits:
+  # Máximo de regeneradores por isla (requiere SuperiorSkyblock2)
   max-blocks-per-island: 5
 
+# ──────────────────────────────────────────
+# NIVELES DE MEJORA
+# ⚠️ Las mejoras ahora se configuran en upgrades.yml
+#    (tres árboles independientes: tiempo, radio y cultivos,
+#    cada uno con su coste por nivel)
+# ──────────────────────────────────────────
+
+# ──────────────────────────────────────────
+# HOLOGRAMA (Display Entity)
+# ──────────────────────────────────────────
 hologram:
+  # Offset Y sobre el bloque
   offset-y: 1.5
+  # Actualizar el countdown ({next_regen}) en tiempo real
+  # false = el holograma nunca se actualiza (mejor rendimiento)
   update-countdown: true
+  # Cada cuántos segundos se actualiza el countdown (mínimo 1)
+  # Solo aplica si update-countdown: true
   update-interval: 1
+  # Escala del texto
   scale: 1.0
+  # Líneas del holograma — placeholders disponibles:
+  # {level} {time_level} {radius_level} {crops_level}
+  # {radius} {interval} {next_regen}
+  # Soporta & codes (&a, &l, &r, etc.) y hex (&#RRGGBB)
   lines:
     - "&a&l✦ Regenerador ✦"
-    - "&7Tiempo: &b{time_level} &8| &7Radio: &a{radius}"
-    - "&7Cultivos: &e{crops_level}"
+    - "&7Área: &a{radius} bloques"
+    - "&7Recarga: &e{interval}s"
     - "&8⏳ Próx: &f{next_regen}s"
 
+# ──────────────────────────────────────────
+# PARTÍCULAS
+# Dibujan el contorno del ÁREA de regeneración (no del bloque)
+# ──────────────────────────────────────────
 particles:
   enabled: true
-  interval-ticks: 10
+  # Tipo de partícula (enum de Bukkit: END_ROD, FLAME, VILLAGER_HAPPY, ...)
   type: END_ROD
-  radius: 0.8
-  points: 24
+  # CUBE   = cubo 3D completo (contorno exacto del área que regenera,
+  #          incluye altura, igual que la regeneración de FAWE)
+  # SQUARE = solo contorno horizontal a la altura del bloque
+  # CIRCLE = círculo horizontal a la altura del bloque
+  shape: CUBE
+  # Separación en BLOQUES entre partículas
+  # 2.0 = una partícula cada 2 bloques. Mayor = más ligero. Mínimo 0.5
+  spacing: 2.0
+  # Cada cuántos ticks se redibujan (20 ticks = 1 segundo)
+  interval-ticks: 10
 
-menu:
-  # Tamaño del inventario: 1-6 filas.
-  rows: 1
-  title: "&8Mejoras del Regenerador"
-
-  # Cada elemento es completamente configurable.
-  # action: UPGRADE_TIME, UPGRADE_RADIUS, UPGRADE_CROPS, TOGGLE_PARTICLES o NONE
-  # Placeholders disponibles para mejoras:
-  # {level}, {max_level}, {next_level}, {cost}
-  # {current_interval}, {next_interval}
-  # {current_radius}, {next_radius}
-  # {current_crops}, {next_crops}
-  # {particles_state}
-  items:
-    time:
-      slot: 1
-      action: UPGRADE_TIME
-      material: CLOCK
-      name: "&b&lMejora de Tiempo"
-      lore:
-        - "&8&m────────────────────"
-        - "&7Nivel actual: &f{level}&8/&f{max_level}"
-        - "&7Intervalo: &f{current_interval}s &8→ &a{next_interval}s"
-        - "&7Costo: &e{cost}"
-        - ""
-        - "&e▸ Clic para mejorar"
-        - "&8&m────────────────────"
-
-    radius:
-      slot: 3
-      action: UPGRADE_RADIUS
-      material: COMPASS
-      name: "&a&lMejora de Radio"
-      lore:
-        - "&8&m────────────────────"
-        - "&7Nivel actual: &f{level}&8/&f{max_level}"
-        - "&7Radio: &f{current_radius} &8→ &a{next_radius}"
-        - "&7Costo: &e{cost}"
-        - ""
-        - "&e▸ Clic para mejorar"
-        - "&8&m────────────────────"
-
-    crops:
-      slot: 5
-      action: UPGRADE_CROPS
-      material: WHEAT
-      name: "&e&lMejora de Cultivos"
-      lore:
-        - "&8&m────────────────────"
-        - "&7Nivel actual: &f{level}&8/&f{max_level}"
-        - "&7Cultivos en este tier: &f{next_crops}"
-        - "&7Costo: &e{cost}"
-        - ""
-        - "&e▸ Clic para mejorar"
-        - "&8&m────────────────────"
-
-    particles:
-      slot: 7
-      action: TOGGLE_PARTICLES
-      material: END_ROD
-      name: "&d&lPartículas: &f{particles_state}"
-      lore:
-        - "&7Anillo horizontal alrededor del bloque."
-        - ""
-        - "&e▸ Clic para alternar"
-
-  # Rellena los espacios vacíos. Puedes desactivarlo.
-  filler:
-    enabled: false
-    material: BLACK_STAINED_GLASS_PANE
-    name: " "
-    lore: []
-
+# ──────────────────────────────────────────
+# MENSAJES
+# Formato: códigos & (&a, &l, &r) y hex &#RRGGBB
+# El prefix se antepone automáticamente a todos los mensajes
+# ──────────────────────────────────────────
 messages:
-  prefix: "&8[&aCropRegen&8] &r"
+  prefix: "&2[&aCropRegen&2] &r"
   placed: "&aBloque regenerador colocado correctamente."
   removed: "&cBloque regenerador eliminado."
-  limit-reached: "&cHas alcanzado el límite de bloques para tu isla (&f{max}&c)."
-  upgrade-success: "&aMejora de &e{tree} &acompletada. Nivel &e{level}&a."
-  upgrade-max: "&eEsta mejora ya está en el nivel máximo."
+  limit-reached: "&cHas alcanzado el límite de bloques para tu isla &7({max})&c."
+  upgrade-success: "&a¡&e{tree}&a mejorado al nivel &e{level}&a!"
+  upgrade-max: "&eEste bloque ya está en el nivel máximo."
   not-your-island: "&cSolo puedes colocar este bloque en tu isla."
-  no-permission: "&cSolo el dueño puede administrar este regenerador."
-  particles-toggled: "&aPartículas &e{state}&a."
-  vault-unavailable: "&cVault/Economy no está disponible."
-  not-enough-money: "&cNo tienes suficiente dinero. Necesitas &e{cost}&c."
-  not-enough-xp: "&cNo tienes suficiente XP. Necesitas &e{cost}&c XP."
-  not-enough-items: "&cNo tienes los objetos necesarios. Necesitas &e{cost}&c."
-  payment-error: "&cNo se pudo completar el pago."
+  no-permission: "&cNo tienes permisos para hacer esto."
   item-given: "&aSe dio el bloque de nivel &e{level} &aa &f{player}&a."
   no-player: "&cJugador no encontrado."
   invalid-level: "&cNivel inválido. Usa un nivel entre 1 y {max}."
+  # Cooldown del menú — placeholder: {seconds}
   cooldown-message: "&cEspera &e{seconds}s &cantes de volver a usar esto."
+  # Toggle de partículas — placeholder: {state} (activadas/desactivadas)
+  particles-toggled: "&aPartículas &e{state}&a."
+  # Costes de mejora — placeholder: {cost}
+  not-enough-money: "&cNo tienes suficiente dinero. Coste: &f{cost}"
+  not-enough-xp: "&cNo tienes suficiente XP. Coste: &f{cost}"
+  not-enough-items: "&cTe faltan ítems. Coste: &f{cost}"
+  vault-unavailable: "&cLa economía no está disponible (Vault no encontrado)."
+  payment-error: "&cError al procesar el pago. Inténtalo de nuevo."
 
+# ──────────────────────────────────────────
+# INTERACCIÓN (clic derecho sobre el bloque)
+# Al hacer clic derecho se abre el MENÚ DE MEJORAS
+# ──────────────────────────────────────────
 interaction:
-  cooldown: 0
+  # Cooldown en segundos entre aperturas del menú (0 = sin cooldown)
+  cooldown: 3
 
+# ──────────────────────────────────────────
+# ÍTEM del bloque regenerador
+# Formato: códigos & y hex &#RRGGBB
+# Placeholders disponibles:
+#   {level}        → Nivel máximo de los tres árboles
+#   {time_level}   → Nivel del árbol de tiempo
+#   {radius_level} → Nivel del árbol de radio
+#   {crops_level}  → Nivel del árbol de cultivos
+#   {radius}       → Radio de efecto en bloques
+#   {interval}     → Intervalo de regeneración en segundos
+# ──────────────────────────────────────────
 item:
   name: "&aRegenerador de Cultivos"
   lore:
     - "&r&8──────────────────"
-    - "&r&7Nivel inicial: &e{level}"
-    - "&r&7Radio: &a{radius} bloques"
-    - "&r&7Intervalo: &e{interval}s"
+    - "&r&7Tiempo: &eNv. {time_level}"
+    - "&r&7Radio: &aNv. {radius_level} &7({radius} bloques)"
+    - "&r&7Cultivos: &eNv. {crops_level}"
+    - "&r&7Recarga: &e{interval}s"
     - ""
     - "&r&8Coloca este bloque en tu isla"
     - "&r&8──────────────────"
+  # ¿Aplicar brillo de encantamiento al ítem?
   enchanted: true
+  # ¿Ocultar los encantamientos? (solo aplica si enchanted: true)
   hide-enchantments: true
+  # CustomModelData para resource packs (0 = desactivado)
+  custom-model-data: 0
+
+# ──────────────────────────────────────────
+# MENÚ DE MEJORAS
+# Formato: códigos & y hex &#RRGGBB
+# Cada item acepta enabled: true/false
+# Acciones: UPGRADE_TIME, UPGRADE_RADIUS, UPGRADE_CROPS,
+#           TOGGLE_PARTICLES, CLOSE, NONE
+# Placeholders en items de mejora:
+#   {level} {max_level} {next_level} {cost}
+#   {current_interval} {next_interval}
+#   {current_radius} {next_radius}
+#   {current_crops} {next_crops}
+# Placeholders generales (cualquier item):
+#   {time_level} {radius_level} {crops_level}
+#   {particles_state} {owner}
+# ──────────────────────────────────────────
+menu:
+  rows: 3
+  title: "&8Mejoras del Regenerador"
+
+  items:
+    upgrade_time:
+      enabled: true
+      slot: 10
+      action: UPGRADE_TIME
+      material: CLOCK
+      name: "&eMejorar Tiempo"
+      lore:
+        - "&7Nivel actual: &f{level}&7/&f{max_level}"
+        - "&7Intervalo actual: &f{current_interval}s"
+        - "&7Siguiente intervalo: &f{next_interval}s"
+        - ""
+        - "&7Coste: &f{cost}"
+        - ""
+        - "&a¡Click para mejorar!"
+
+    upgrade_radius:
+      enabled: true
+      slot: 12
+      action: UPGRADE_RADIUS
+      material: ENDER_EYE
+      name: "&eMejorar Radio"
+      lore:
+        - "&7Nivel actual: &f{level}&7/&f{max_level}"
+        - "&7Radio actual: &f{current_radius}"
+        - "&7Siguiente radio: &f{next_radius}"
+        - ""
+        - "&7Coste: &f{cost}"
+        - ""
+        - "&a¡Click para mejorar!"
+
+    upgrade_crops:
+      enabled: true
+      slot: 14
+      action: UPGRADE_CROPS
+      material: WHEAT
+      name: "&eMejorar Cultivos"
+      lore:
+        - "&7Nivel actual: &f{level}&7/&f{max_level}"
+        - "&7Cultivos actuales: &f{current_crops}"
+        - "&7Siguientes cultivos: &f{next_crops}"
+        - ""
+        - "&7Coste: &f{cost}"
+        - ""
+        - "&a¡Click para mejorar!"
+
+    toggle_particles:
+      enabled: true
+      slot: 16
+      action: TOGGLE_PARTICLES
+      material: BLAZE_POWDER
+      name: "&ePartículas"
+      lore:
+        - "&7Estado: &f{particles_state}"
+        - ""
+        - "&a¡Click para alternar!"
+
+    info:
+      enabled: true
+      slot: 13
+      action: NONE
+      material: BOOK
+      name: "&eInformación"
+      lore:
+        - "&7Niveles actuales:"
+        - "&7- Tiempo: &f{time_level}"
+        - "&7- Radio: &f{radius_level}"
+        - "&7- Cultivos: &f{crops_level}"
+
+    close:
+      enabled: true
+      slot: 22
+      action: CLOSE
+      material: BARRIER
+      name: "&cCerrar"
+      lore:
+        - "&7Cierra el menú"
+
+  # Relleno para los slots vacíos
+  filler:
+    enabled: true
+    material: BLACK_STAINED_GLASS_PANE
+    name: " "
+    lore: []
+    custom-model-data: 0
+
+  # Sonidos del menú (enums de Bukkit; NONE = silenciar ese sonido)
+  sounds:
+    upgrade:
+      sound: ENTITY_PLAYER_LEVELUP
+      volume: 1.0
+      pitch: 1.0
+    error:
+      sound: ENTITY_VILLAGER_NO
+      volume: 1.0
+      pitch: 1.0
+    toggle:
+      sound: UI_BUTTON_CLICK
+      volume: 1.0
+      pitch: 1.2
+    close:
+      sound: UI_BUTTON_CLICK
+      volume: 1.0
+      pitch: 0.8
