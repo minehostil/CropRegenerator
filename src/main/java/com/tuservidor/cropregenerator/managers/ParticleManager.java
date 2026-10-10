@@ -29,6 +29,8 @@ public class ParticleManager {
 
     public void start() {
         stop();
+        // Si las partículas están desactivadas en config, ni programar el task
+        if (!plugin.getConfig().getBoolean("particles.enabled", true)) return;
         long interval = Math.max(1L, plugin.getConfig().getLong("particles.interval-ticks", 10L));
         task = plugin.getServer().getScheduler().runTaskTimer(plugin, this::tick, interval, interval);
     }
@@ -36,6 +38,12 @@ public class ParticleManager {
     public void stop() {
         if (task != null) { task.cancel(); task = null; }
     }
+
+    /** Pausa el dibujo (server vacío — el PlayerConnectionListener la invoca). */
+    public void pause() { stop(); }
+
+    /** Reanuda el dibujo si no está corriendo. Idempotente. */
+    public void resume() { if (task == null) start(); }
 
     private void tick() {
         if (!plugin.getConfig().getBoolean("particles.enabled", true)) return;
