@@ -76,12 +76,12 @@ particles:
   #          incluye altura, igual que la regeneración de FAWE)
   # SQUARE = solo contorno horizontal a la altura del bloque
   # CIRCLE = círculo horizontal a la altura del bloque
-  shape: CUBE
+  shape: SQUARE
   # Separación en BLOQUES entre partículas
   # 2.0 = una partícula cada 2 bloques. Mayor = más ligero. Mínimo 0.5
   spacing: 2.0
   # Cada cuántos ticks se redibujan (20 ticks = 1 segundo)
-  interval-ticks: 10
+  interval-ticks: 100
 
 # ──────────────────────────────────────────
 # MENSAJES
