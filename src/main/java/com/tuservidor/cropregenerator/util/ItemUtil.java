@@ -94,6 +94,10 @@ public class ItemUtil {
             if (plugin.getConfig().getBoolean("item.hide-enchantments", true)) meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
         }
 
+        // CustomModelData para resource packs (0 = desactivado)
+        int cmd = plugin.getConfig().getInt("item.custom-model-data", 0);
+        if (cmd > 0) meta.setCustomModelData(cmd);
+
         meta.getPersistentDataContainer().set(REGEN_KEY, PersistentDataType.BOOLEAN, true);
         meta.getPersistentDataContainer().set(TIME_KEY, PersistentDataType.INTEGER, time);
         meta.getPersistentDataContainer().set(RADIUS_KEY, PersistentDataType.INTEGER, radius);
