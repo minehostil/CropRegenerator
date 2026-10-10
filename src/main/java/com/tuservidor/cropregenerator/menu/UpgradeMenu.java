@@ -7,6 +7,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Material;
+import org.bukkit.Sound;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
@@ -45,6 +46,8 @@ public class UpgradeMenu {
             for (String id : items.getKeys(false)) {
                 ConfigurationSection section = items.getConfigurationSection(id);
                 if (section == null) continue;
+                // Cada item se puede desactivar con enabled: false (default: true)
+                if (!section.getBoolean("enabled", true)) continue;
 
                 String action = section.getString("action", "NONE").toUpperCase(Locale.ROOT);
                 int slot = section.getInt("slot", -1);
@@ -61,9 +64,11 @@ public class UpgradeMenu {
         ConfigurationSection filler = menu.getConfigurationSection("filler");
         if (filler != null && filler.getBoolean("enabled", false)) {
             Material material = material(filler.getString("material", "BLACK_STAINED_GLASS_PANE"), Material.BLACK_STAINED_GLASS_PANE);
+            int fillerCmd = filler.getInt("custom-model-data", 0);
             ItemStack item = item(material,
                     filler.getString("name", " "),
-                    filler.getStringList("lore"));
+                    filler.getStringList("lore"),
+                    fillerCmd > 0 ? fillerCmd : null);
             for (int slot = 0; slot < inv.getSize(); slot++) {
                 if (inv.getItem(slot) == null) inv.setItem(slot, item);
             }
@@ -78,7 +83,8 @@ public class UpgradeMenu {
         List<String> lore = section.getStringList("lore").stream()
                 .map(line -> replace(line, action, rb))
                 .toList();
-        return item(material, name, lore);
+        int cmd = section.getInt("custom-model-data", 0);
+        return item(material, name, lore, cmd > 0 ? cmd : null);
     }
 
     private String replace(String value, String action, RegeneratorBlock rb) {
@@ -87,6 +93,12 @@ public class UpgradeMenu {
         String result = value;
 
         result = result.replace("{particles_state}", rb.isParticlesEnabled() ? "Activadas" : "Desactivadas");
+
+        // Placeholders generales — disponibles también en items informativos (action NONE)
+        result = result.replace("{time_level}", String.valueOf(rb.getTimeLevel()))
+                .replace("{radius_level}", String.valueOf(rb.getRadiusLevel()))
+                .replace("{crops_level}", String.valueOf(rb.getCropsLevel()))
+                .replace("{owner}", rb.getOwnerUUID().toString());
 
         if (tree != null) {
             int currentLevel = currentLevel(tree, rb);
@@ -137,13 +149,32 @@ public class UpgradeMenu {
         };
     }
 
+    /** Reproduce un sonido configurado en menu.sounds.<key> con {sound, volume, pitch}. */
+    public void playSound(Player player, String key, String fallback) {
+        String name = plugin.getConfig().getString("menu.sounds." + key + ".sound", fallback);
+        if (name == null || name.isBlank() || name.equalsIgnoreCase("NONE")) return;
+        try {
+            Sound sound = Sound.valueOf(name.toUpperCase(Locale.ROOT));
+            float volume = (float) plugin.getConfig().getDouble("menu.sounds." + key + ".volume", 1.0);
+            float pitch = (float) plugin.getConfig().getDouble("menu.sounds." + key + ".pitch", 1.0);
+            player.playSound(player.getLocation(), sound, volume, pitch);
+        } catch (IllegalArgumentException ex) {
+            plugin.getLogger().warning("Sonido inválido en menu.sounds." + key + ": " + name);
+        }
+    }
+
     private ItemStack item(Material material, String name, List<String> lore) {
+        return item(material, name, lore, null);
+    }
+
+    private ItemStack item(Material material, String name, List<String> lore, Integer customModelData) {
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
         meta.displayName(text(name).decoration(TextDecoration.ITALIC, false));
         meta.lore(lore.stream()
                 .map(line -> text(line).decoration(TextDecoration.ITALIC, false))
                 .toList());
+        if (customModelData != null) meta.setCustomModelData(customModelData);
         item.setItemMeta(meta);
         return item;
     }
