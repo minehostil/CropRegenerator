@@ -52,7 +52,7 @@ public class CropRegeneratorPlugin extends JavaPlugin {
         if (getServer().getPluginManager().getPlugin("SuperiorSkyblock2") != null) {
             this.superiorHook = new SuperiorSkyblockHook(this);
             getLogger().info("SuperiorSkyblock2 detectado — integración activada.");
-            // Listener de isla (delete)
+            // Listener de isla (disband + transferencia)
             getServer().getPluginManager().registerEvents(new IslandListener(this), this);
         } else {
             getLogger().warning("SuperiorSkyblock2 no encontrado — límites de isla desactivados.");
@@ -69,18 +69,18 @@ public class CropRegeneratorPlugin extends JavaPlugin {
         getCommand("cropblock").setExecutor(cmd);
         getCommand("cropblock").setTabCompleter(cmd);
 
-        particleManager.start();
-
         // Cargar datos persistentes y restaurar hologramas
         blockDataManager.loadAll();
         blockDataManager.spawnHologramsInLoadedChunks();
 
         // Autosave cada 5 minutos (se cancela solo al deshabilitar el plugin)
         getServer().getScheduler().runTaskTimer(this, () -> blockDataManager.saveAll(),
-        20L * 300L, 20L * 300L);
-        // Solo iniciar el task si hay jugadores conectados (evita consumo en servidor vacío)
+                20L * 300L, 20L * 300L);
+
+        // Solo iniciar los tasks si hay jugadores conectados (evita consumo en servidor vacío)
         if (!getServer().getOnlinePlayers().isEmpty()) {
             regeneratorManager.startAll();
+            particleManager.start();
         }
 
         getLogger().info("CropRegenerator habilitado correctamente.");
